@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#667eea">
+    <title>Weight Loss Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0;
+        }
+        
+        header {
+            background: white;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        
+        header p {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            padding-bottom: 5px;
+        }
+        
+        .tab-button {
+            padding: 10px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+            flex: 1 1 auto;
+            min-width: 70px;
+            min-height: 44px;
+        }
+        
+        .tab-button.active {
+            background: #764ba2;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 15px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .form-group {
+            margin-bottom: 18px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 16px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            min-height: 50px;
+            margin-bottom: 10px;
+        }
+        
+        .secondary-btn {
+            background: #6c757d;
+        }
+        
+        .delete-btn {
+            background: #dc3545;
+            width: auto;
+            padding: 10px 20px;
+            font-size: 13px;
+        }
+        
+        .meal-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        
+        .meal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .meal-content {
+            padding: 15px;
+            display: none;
+        }
+        
+        .meal-content.open {
+            display: block;
+        }
+        
+        .meal-content ul {
+            margin: 0;
+            padding-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .meal-category {
+            font-weight: 600;
+            color: #667eea;
+            margin-top: 12px;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        
+        .meal-note {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            padding: 10px;
+            margin-top: 12px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-style: italic;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+        }
+        
+        .entry-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .phase-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            border-left: 4px solid #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Weight Loss Tracker</h1>
+            <p>Track offline - all data stored locally</p>
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('entry')">New</button>
+                <button class="tab-button" onclick="switchTab('nutrition')">Nutrition</button>
+                <button class="tab-button" onclick="switchTab('history')">History</button>
+                <button class="tab-button" onclick="switchTab('phases')">Phases</button>
+                <button class="tab-button" onclick="switchTab('stats')">Stats</button>
+            </div>
+        </header>
+
+        <div id="entry-tab" class="tab-content active">
+            <div class="card">
+                <h2>Add Weekly Entry</h2>
+                <form id="entry-form">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="entry-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Weight (kg)</label>
+                        <input type="number" step="0.1" id="entry-weight" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Body Fat (%)</label>
+                        <input type="number" step="0.1" id="entry-bodyfat" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes (optional)</label>
+                        <textarea id="entry-notes" rows="3"></textarea>
+                    </div>
+                    <button type="submit">Save Entry</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="nutrition-tab" class="tab-content">
+            <div class="card">
+                <h2>Your Meal Plan</h2>
+                
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <div style="font-size: 13px;"><strong>Current:</strong> 81.5kg | 1.73m</div>
+                    <div style="font-size: 18px; font-weight: bold; margin-top: 8px;">1639 kcal daily target</div>
+                </div>
+
+                <div class="meal-section">
+                    <div class="meal-header" onclick="toggleMeal('breakfast')">
+                        <span>BREAKFAST (08:00-09:00)</span>
+                    </div>
+                    <div class="meal-content open" id="breakfast-content">
+                        <ul>
+                            <li>30g oats</li>
+                            <li>35g whey protein</li>
+                            <li>1 medium banana</li>
+                            <li>200ml skim milk</li>
+                        </ul>
+                        <div class="meal-note">Note: Test no milk in coffee</div>
+                    </div>
+                </div>
+
+                <div class="meal-section">
+                    <div class="meal-header" onclick="toggleMeal('lunch')">
+                        <span>LUNCH (12:00)</span>
+                    </div>
+                    <div class="meal-content open" id="lunch-content">
+                        <div class="meal-category">Choose ONE carb:</div>
+                        <ul>
+                            <li>2 slices whole wheat bread</li>
+                            <li>150g cooked rice (white/brown) OR pasta</li>
+                            <li>270g potato</li>
+                        </ul>
+                        <div class="meal-category">Protein:</div>
+                        <ul>
+                            <li>150g chicken breast OR 150g lean beef</li>
+                        </ul>
+                        <div class="meal-category">Dessert:</div>
+                        <ul>
+                            <li>1 medium banana</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="meal-section">
+                    <div class="meal-header" onclick="toggleMeal('snack')">
+                        <span>AFTERNOON SNACK (15:00)</span>
+                    </div>
+                    <div class="meal-content open" id="snack-content">
+                        <ul>
+                            <li>30g mixed nuts (almonds, walnuts, cashews)</li>
+                            <li>1 medium banana</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="meal-section">
+                    <div class="meal-header" onclick="toggleMeal('dinner')">
+                        <span>DINNER (18:00-19:00)</span>
+                    </div>
+                    <div class="meal-content open" id="dinner-content">
+                        <div class="meal-category">Choose ONE carb:</div>
+                        <ul>
+                            <li>150g cooked rice (white/brown) OR pasta</li>
+                            <li>270g potato</li>
+                        </ul>
+                        <div class="meal-category">Protein:</div>
+                        <ul>
+                            <li>100g chicken breast OR 100g lean beef</li>
+                        </ul>
+                        <div class="meal-category">Fat (IMPORTANT):</div>
+                        <ul>
+                            <li>30g grated cheese OR 10ml extra-virgin olive oil</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="history-tab" class="tab-content">
+            <div class="card">
+                <h2>Entry History</h2>
+                <div id="entries-list"></div>
+                <button onclick="exportToCSV()" class="secondary-btn">Export CSV</button>
+            </div>
+        </div>
+
+        <div id="phases-tab" class="tab-content">
+            <div class="card">
+                <h2>Diet Phases</h2>
+                <form id="phase-form">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="phase-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phase Name</label>
+                        <input type="text" id="phase-name" placeholder="e.g., Cut Phase 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Daily Calories</label>
+                        <input type="number" id="phase-calories" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Protein (g/kg)</label>
+                        <input type="number" step="0.1" id="phase-protein" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Carbs (g/kg)</label>
+                        <input type="number" step="0.1" id="phase-carbs" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fats (g/kg)</label>
+                        <input type="number" step="0.1" id="phase-fats" required>
+                    </div>
+                    <button type="submit">Add Phase</button>
+                </form>
+                <div id="phases-list" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <div id="stats-tab" class="tab-content">
+            <div class="card">
+                <h2>Your Progress</h2>
+                <div id="stats-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getData(key) {
+            var data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        }
+        
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+        
+        function switchTab(tabName) {
+            var tabs = document.querySelectorAll('.tab-content');
+            var buttons = document.querySelectorAll('.tab-button');
+            
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove('active');
+            }
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tabName === 'history') displayEntries();
+            if (tabName === 'phases') displayPhases();
+            if (tabName === 'stats') displayStats();
+        }
+        
+        function toggleMeal(mealId) {
+            var content = document.getElementById(mealId + '-content');
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+            } else {
+                content.classList.add('open');
+            }
+        }
+        
+        document.getElementById('entry-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var entry = {
+                date: document.getElementById('entry-date').value,
+                weight: parseFloat(document.getElementById('entry-weight').value),
+                bodyFat: parseFloat(document.getElementById('entry-bodyfat').value),
+                notes: document.getElementById('entry-notes').value
+            };
+            
+            entry.leanMass = entry.weight * (1 - entry.bodyFat / 100);
+            
+            var entries = getData('entries');
+            entries.push(entry);
+            entries.sort(function(a, b) {
+                return new Date(a.date) - new Date(b.date);
+            });
+            saveData('entries', entries);
+            
+            this.reset();
+            document.getElementById('entry-date').valueAsDate = new Date();
+            alert('Entry saved!');
+        });
+        
+        function displayEntries() {
+            var entries = getData('entries');
+            var container = document.getElementById('entries-list');
+            
+            if (entries.length === 0) {
+                container.innerHTML = '<p>No entries yet. Add your first entry!</p>';
+                return;
+            }
+            
+            entries.sort(function(a, b) {
+                return new Date(b.date) - new Date(a.date);
+            });
+            
+            var html = '';
+            for (var i = 0; i < entries.length; i++) {
+                var entry = entries[i];
+                var dateStr = new Date(entry.date).toLocaleDateString();
+                html += '<div class="entry-item">';
+                html += '<div style="font-weight: bold; color: #667eea; margin-bottom: 8px;">' + dateStr + '</div>';
+                html += '<div>Weight: <strong>' + entry.weight.toFixed(1) + ' kg</strong></div>';
+                html += '<div>Body Fat: <strong>' + entry.bodyFat.toFixed(1) + '%</strong></div>';
+                html += '<div>Lean Mass: <strong>' + entry.leanMass.toFixed(1) + ' kg</strong></div>';
+                if (entry.notes) {
+                    html += '<div style="margin-top: 10px; font-style: italic;">' + entry.notes + '</div>';
+                }
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        }
+        
+        document.getElementById('phase-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var phase = {
+                date: document.getElementById('phase-date').value,
+                name: document.getElementById('phase-name').value,
+                calories: parseInt(document.getElementById('phase-calories').value),
+                protein: parseFloat(document.getElementById('phase-protein').value),
+                carbs: parseFloat(document.getElementById('phase-carbs').value),
+                fats: parseFloat(document.getElementById('phase-fats').value)
+            };
+            
+            var phases = getData('phases');
+            phases.push(phase);
+            phases.sort(function(a, b) {
+                return new Date(a.date) - new Date(b.date);
+            });
+            saveData('phases', phases);
+            
+            this.reset();
+            displayPhases();
+            alert('Phase added!');
+        });
+        
+        function displayPhases() {
+            var phases = getData('phases');
+            var container = document.getElementById('phases-list');
+            
+            if (phases.length === 0) {
+                container.innerHTML = '<p>No phases defined yet.</p>';
+                return;
+            }
+            
+            var html = '';
+            for (var i = 0; i < phases.length; i++) {
+                var phase = phases[i];
+                var dateStr = new Date(phase.date).toLocaleDateString();
+                html += '<div class="phase-item">';
+                html += '<strong style="font-size: 15px;">' + phase.name + '</strong><br>';
+                html += '<div style="color: #666; font-size: 13px; margin-top: 5px;">Starting ' + dateStr + '</div>';
+                html += '<div style="margin-top: 12px; font-size: 13px;">';
+                html += phase.calories + ' kcal | ';
+                html += phase.protein + 'g/kg protein | ';
+                html += phase.carbs + 'g/kg carbs | ';
+                html += phase.fats + 'g/kg fats';
+                html += '</div></div>';
+            }
+            container.innerHTML = html;
+        }
+        
+        function displayStats() {
+            var entries = getData('entries');
+            var container = document.getElementById('stats-display');
+            
+            if (entries.length === 0) {
+                container.innerHTML = '<p>No data yet!</p>';
+                return;
+            }
+            
+            entries.sort(function(a, b) {
+                return new Date(a.date) - new Date(b.date);
+            });
+            
+            var first = entries[0];
+            var latest = entries[entries.length - 1];
+            var totalWeightLost = first.weight - latest.weight;
+            var totalBFLost = first.bodyFat - latest.bodyFat;
+            
+            var html = '<div class="stats-grid">';
+            html += '<div class="stat-card"><div class="stat-value">' + latest.weight.toFixed(1) + '</div><div class="stat-label">Current Weight (kg)</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + latest.bodyFat.toFixed(1) + '%</div><div class="stat-label">Current BF%</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + totalWeightLost.toFixed(1) + '</div><div class="stat-label">Total Lost (kg)</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + totalBFLost.toFixed(1) + '%</div><div class="stat-label">Total BF% Lost</div></div>';
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function exportToCSV() {
+            var entries = getData('entries');
+            if (entries.length === 0) {
+                alert('No data to export!');
+                return;
+            }
+            
+            var csv = 'Date,Weight (kg),Body Fat (%),Lean Mass (kg),Notes\n';
+            for (var i = 0; i < entries.length; i++) {
+                var e = entries[i];
+                csv += e.date + ',' + e.weight + ',' + e.bodyFat + ',' + e.leanMass.toFixed(2) + ',"' + (e.notes || '') + '"\n';
+            }
+            
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'weight_tracker_export.csv';
+            a.click();
+        }
+        
+        document.getElementById('entry-date').valueAsDate = new Date();
+        
+        if (getData('entries').length === 0 && !localStorage.getItem('firstRun')) {
+            localStorage.setItem('firstRun', 'done');
+            var initialPhase = {
+                date: new Date().toISOString().split('T')[0],
+                name: 'Cut Phase 1',
+                calories: 1639,
+                protein: 1.7,
+                carbs: 2.2,
+                fats: 0.7
+            };
+            saveData('phases', [initialPhase]);
+        }
+    </script>
+</body>
+</html>
