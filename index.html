@@ -1,855 +1,966 @@
 <!DOCTYPE html>
+<!-- 
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  WEIGHT TRACKER v2.0                                        ║
+  ║  A single-file web app for tracking weight, nutrition,      ║
+  ║  and diet phases. Uses localStorage for persistence.        ║
+  ║                                                             ║
+  ║  STRUCTURE:                                                 ║
+  ║  1. <style>  — All CSS (themes, layout, components)         ║
+  ║  2. <body>   — HTML structure (nav, screens, modals)        ║
+  ║  3. <script> — All JavaScript (data, rendering, events)     ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
 <html lang="en">
 <head>
+    <!-- charset: tells the browser this page uses UTF-8 (supports emojis, accents, etc.) -->
     <meta charset="UTF-8">
+
+    <!-- viewport: makes the page responsive on mobile devices
+         width=device-width → page width matches the phone screen
+         initial-scale=1.0  → no zoom on load
+         viewport-fit=cover → extends into notch area on iPhones -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
     <title>Weight Tracker</title>
+
+    <!-- Google Fonts: loading two font families
+         DM Sans  → clean sans-serif for body text, labels, buttons
+         DM Mono  → monospace font for numbers (makes digits align nicely) -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <style>
-        :root {
-            --bg: #0f1117;
-            --surface: #1a1d27;
-            --surface2: #232635;
-            --accent: #00e5a0;
-            --accent2: #0095ff;
-            --danger: #ff4d6a;
-            --warn: #ffc107;
-            --text: #f0f2ff;
-            --text2: #8b90a7;
-            --border: rgba(255,255,255,0.07);
-            --tab-h: 60px;
-            --fab-size: 56px;
+        /* ══════════════════════════════════════════════════════════
+           THEME SYSTEM
+           ══════════════════════════════════════════════════════════
+           CSS Custom Properties (variables) defined with --name.
+           These are used throughout the CSS with var(--name).
+           
+           HOW THEMING WORKS:
+           - :root sets the default (dark theme) variables
+           - [data-theme="light"] overrides those same variables
+           - When JS sets data-theme on <html>, the browser
+             automatically uses the matching variable set
+           - This means we write CSS ONCE and colors change via vars!
+        */
+
+        /* DEFAULT / DARK THEME
+           :root means "the html element" — these apply everywhere.
+           [data-theme="dark"] is also here so dark is explicitly selectable */
+        :root, [data-theme="dark"] {
+            --bg: #1a1e2a;              /* Main background (dark navy) */
+            --surface: #1a1d27;         /* Card backgrounds (slightly different from bg) */
+            --surface2: #232635;        /* Secondary surfaces (inputs, list items) */
+            --accent: #00e5a0;          /* Primary accent — green (buttons, highlights) */
+            --accent2: #0095ff;         /* Secondary accent — blue (charts, links) */
+            --danger: #ff4d6a;          /* Red for warnings, delete buttons */
+            --warn: #ffc107;            /* Yellow for notes, cautions */
+            --text: #f0f2ff;            /* Primary text color (near-white) */
+            --text2: #8b90a7;           /* Secondary/muted text (grey) */
+            --border: rgba(255,255,255,0.07);  /* Subtle borders (white at 7% opacity) */
+            --modal-bg: rgba(0,0,0,0.7);       /* Modal backdrop darkness */
+            --input-bg: #232635;        /* Input field backgrounds */
         }
 
+        /* LIGHT THEME — brighter, paper-like colors */
+        [data-theme="light"] {
+            --bg: #f5f6fa;
+            --surface: #ffffff;
+            --surface2: #eceef5;
+            --accent: #00b87a;          /* Slightly darker green (readable on white) */
+            --accent2: #0077dd;
+            --danger: #e0334e;
+            --warn: #e5a800;
+            --text: #1a1d27;            /* Dark text on light background */
+            --text2: #6b7084;
+            --border: rgba(0,0,0,0.08); /* Dark borders at low opacity */
+            --modal-bg: rgba(0,0,0,0.4);
+            --input-bg: #eceef5;
+        }
+
+        /* CLAUDE THEME — warm beige/cream inspired by Claude's UI */
+        [data-theme="claude"] {
+            --bg: #f0ede6;              /* Warm off-white background */
+            --surface: #faf9f5;
+            --surface2: #e8e4db;
+            --accent: #c96442;          /* Terracotta/rust orange accent */
+            --accent2: #8b6e52;         /* Warm brown secondary */
+            --danger: #c0392b;
+            --warn: #d4a017;
+            --text: #2d2a26;
+            --text2: #7a756c;
+            --border: rgba(0,0,0,0.08);
+            --modal-bg: rgba(0,0,0,0.35);
+            --input-bg: #e8e4db;
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           GLOBAL RESET
+           ══════════════════════════════════════════════════════════
+           * selector targets EVERY element on the page.
+           - margin/padding: 0   → removes browser default spacing
+           - box-sizing: border-box → padding is included in width
+             (without this, a 100px box with 10px padding = 120px!) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* BODY — the main container
+           max-width: 480px + margin: 0 auto → centers the app like a phone screen
+           transition → smooth 0.3s fade when switching themes */
         body {
             font-family: 'DM Sans', sans-serif;
             background: var(--bg);
             color: var(--text);
-            min-height: 100vh;
-            max-width: 480px;
-            margin: 0 auto;
+            min-height: 100vh;          /* vh = viewport height. 100vh = full screen */
+            max-width: 480px;           /* Keeps it phone-width even on desktop */
+            margin: 0 auto;             /* auto left/right margins = centered */
             position: relative;
-            overflow-x: hidden;
+            overflow-x: hidden;         /* Prevents horizontal scroll */
+            transition: background 0.3s, color 0.3s;
         }
 
-        /* ── TOP NAV ── */
+        /* ══════════════════════════════════════════════════════════
+           TOP NAVIGATION BAR
+           ══════════════════════════════════════════════════════════
+           position: sticky → stays at the top when you scroll down
+           z-index: 200     → stacks above other content (higher = on top)
+           display: flex    → children (tabs) sit side by side */
         nav {
-            position: sticky;
-            top: 0;
-            z-index: 200;
+            position: sticky; top: 0; z-index: 200;
             background: var(--bg);
             border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: stretch;
-            height: var(--tab-h);
-            padding: 0 4px;
+            display: flex; align-items: stretch;  /* stretch = tabs fill full height */
+            height: 60px; padding: 0 4px;
+            transition: background 0.3s;
         }
 
+        /* Each nav tab — flex: 1 makes them share space equally
+           flex-direction: column → icon stacks above text */
         .nav-tab {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            border: none;
-            background: transparent;
-            color: var(--text2);
-            cursor: pointer;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 10px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            position: relative;
-            transition: color 0.2s;
-            padding: 0 2px;
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 3px;
+            border: none; background: transparent; color: var(--text2);
+            cursor: pointer; font-family: 'DM Sans', sans-serif;
+            font-size: 10px; font-weight: 500; letter-spacing: 0.5px;
+            text-transform: uppercase;  /* "stats" becomes "STATS" */
+            position: relative;         /* Needed for the ::after underline */
+            transition: color 0.2s; padding: 0 2px;
         }
-
         .nav-tab svg { width: 20px; height: 20px; }
+
+        /* Active tab gets the accent color */
         .nav-tab.active { color: var(--accent); }
+
+        /* ::after creates a pseudo-element — the green underline bar
+           This is a CSS-only decoration, no extra HTML needed! */
         .nav-tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 15%; right: 15%;
-            height: 2px;
-            background: var(--accent);
-            border-radius: 2px 2px 0 0;
+            content: ''; position: absolute; bottom: 0;
+            left: 15%; right: 15%; height: 2px;
+            background: var(--accent); border-radius: 2px 2px 0 0;
         }
 
-        /* ── CONTENT ── */
+        /* ══════════════════════════════════════════════════════════
+           SCREEN SYSTEM
+           ══════════════════════════════════════════════════════════
+           Only one screen is visible at a time.
+           JS adds/removes the .active class to show/hide screens.
+           padding-bottom: 100px → prevents FAB from covering content */
         .screen { display: none; padding: 16px 16px 100px; }
         .screen.active { display: block; }
 
-        /* ── CARDS ── */
+        /* ══════════════════════════════════════════════════════════
+           CARD COMPONENT
+           ══════════════════════════════════════════════════════════
+           Reusable card style — used for charts, goal progress, forms.
+           border-radius: 16px → rounded corners (higher = rounder) */
         .card {
-            background: var(--surface);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 18px;
-            margin-bottom: 12px;
-        }
-        .card-label {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--text2);
-            margin-bottom: 6px;
+            background: var(--surface); border-radius: 16px;
+            border: 1px solid var(--border); padding: 18px; margin-bottom: 12px;
+            transition: background 0.3s, border-color 0.3s;
         }
 
-        /* ── STATS ── */
+        /* Small uppercase label used inside cards */
+        .card-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); margin-bottom: 6px; }
+
+        /* ══════════════════════════════════════════════════════════
+           STATS SCREEN — HERO CARDS
+           ══════════════════════════════════════════════════════════
+           grid-template-columns: 1fr 1fr → two equal-width columns
+           1fr means "1 fraction of available space" */
         .hero-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-        .hero-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 18px 16px;
-            display: flex; flex-direction: column; gap: 4px;
-        }
-        .hero-card.accent-card {
-            background: linear-gradient(135deg, rgba(0,229,160,0.15), rgba(0,149,255,0.1));
-            border-color: rgba(0,229,160,0.25);
-        }
-        .hero-val {
-            font-family: 'DM Mono', monospace;
-            font-size: 30px; font-weight: 500;
-            color: var(--text); line-height: 1;
-        }
-        .hero-val .unit { font-size: 14px; color: var(--text2); font-weight: 400; }
-        .hero-delta { font-size: 12px; font-weight: 600; }
-        .delta-good { color: var(--accent); }
-        .delta-bad { color: var(--danger); }
 
+        .hero-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.3s; }
+
+        /* The accent card (Current Weight) gets a gradient background
+           rgba() = color with transparency. The gradient goes from
+           green (top-left) to blue (bottom-right) at low opacity */
+        .hero-card.accent-card { background: linear-gradient(135deg, rgba(0,229,160,0.15), rgba(0,149,255,0.1)); border-color: rgba(0,229,160,0.25); }
+
+        /* Theme-specific overrides for the accent card gradient */
+        [data-theme="claude"] .hero-card.accent-card { background: linear-gradient(135deg, rgba(201,100,66,0.15), rgba(139,110,82,0.1)); border-color: rgba(201,100,66,0.25); }
+        [data-theme="light"] .hero-card.accent-card { background: linear-gradient(135deg, rgba(0,184,122,0.12), rgba(0,119,221,0.08)); border-color: rgba(0,184,122,0.2); }
+
+        /* Big number display in hero cards */
+        .hero-val { font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 500; color: var(--text); line-height: 1; }
+        .hero-val .unit { font-size: 14px; color: var(--text2); font-weight: 400; }
+
+        /* Delta text below hero numbers ("+0.3kg vs last entry") */
+        .hero-delta { font-size: 12px; font-weight: 600; }
+        .delta-good { color: var(--accent); }  /* Green = good change */
+        .delta-bad { color: var(--danger); }    /* Red = bad change */
+
+        /* ── CHART ── */
+        /* The chart canvas fills its wrapper. Height is fixed at 160px */
         .chart-wrap { position: relative; height: 160px; margin-top: 8px; }
         canvas { width: 100%; height: 100%; display: block; }
+
+        /* Legend dots below the chart */
         .chart-legend { display: flex; gap: 16px; margin-top: 10px; }
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .legend-item { font-size: 11px; color: var(--text2); display: flex; align-items: center; }
 
+        /* ── GOAL PROGRESS BAR ── */
         .goal-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
         .goal-label { font-size: 13px; color: var(--text2); }
         .goal-val { font-size: 13px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+
+        /* Progress bar: outer track + inner fill
+           The fill width is set dynamically by JS via style="width: X%" */
         .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-bottom: 12px; }
         .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; }
 
-        /* ── HISTORY ── */
-        .entry-item {
-            background: var(--surface2);
-            border-radius: 12px; padding: 14px 16px; margin-bottom: 8px;
-            display: flex; align-items: center; gap: 14px;
-        }
+        /* ══════════════════════════════════════════════════════════
+           HISTORY SCREEN — ENTRY LIST ITEMS
+           ══════════════════════════════════════════════════════════ */
+        .entry-item { background: var(--surface2); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px; }
+
+        /* Date block on the left (shows day number + month abbreviation) */
         .entry-date-block { background: var(--surface); border-radius: 10px; padding: 8px 10px; text-align: center; min-width: 48px; }
         .entry-date-block .day { font-size: 20px; font-weight: 700; line-height: 1; color: var(--accent); font-family: 'DM Mono', monospace; }
         .entry-date-block .mon { font-size: 10px; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; }
-        .entry-data { flex: 1; }
+
+        .entry-data { flex: 1; }  /* flex: 1 makes it take remaining space */
         .entry-weight { font-size: 18px; font-weight: 600; font-family: 'DM Mono', monospace; }
         .entry-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+        /* Small colored badges showing weight change (+0.3kg / -1.2kg) */
         .entry-delta-badge { font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 20px; }
         .badge-good { background: rgba(0,229,160,0.15); color: var(--accent); }
         .badge-bad { background: rgba(255,77,106,0.15); color: var(--danger); }
         .badge-neu { background: var(--surface); color: var(--text2); }
 
-        /* ══════════════════════════════════
-           NUTRITION TAB
-        ══════════════════════════════════ */
+        /* ══════════════════════════════════════════════════════════
+           NUTRITION SCREEN
+           ══════════════════════════════════════════════════════════ */
 
-        /* Calorie banner */
-        .cal-banner {
-            background: linear-gradient(135deg, rgba(0,229,160,0.12), rgba(0,149,255,0.08));
-            border: 1px solid rgba(0,229,160,0.2);
-            border-radius: 14px; padding: 14px 16px; margin-bottom: 14px;
-        }
+        /* Calorie banner at the top — gradient background with accent border */
+        .cal-banner { background: linear-gradient(135deg, rgba(0,229,160,0.12), rgba(0,149,255,0.08)); border: 1px solid rgba(0,229,160,0.2); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
 
-        .cal-banner-row {
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        /* Theme-specific calorie banner colors */
+        [data-theme="claude"] .cal-banner { background: linear-gradient(135deg, rgba(201,100,66,0.12), rgba(139,110,82,0.08)); border-color: rgba(201,100,66,0.2); }
+        [data-theme="light"] .cal-banner { background: linear-gradient(135deg, rgba(0,184,122,0.1), rgba(0,119,221,0.06)); border-color: rgba(0,184,122,0.18); }
 
+        .cal-banner-row { display: flex; justify-content: space-between; align-items: center; }
         .cal-val-wrap { display: flex; flex-direction: column; gap: 2px; }
         .cal-val { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--accent); }
         .cal-label { font-size: 11px; color: var(--text2); }
         .cal-info { font-size: 12px; color: var(--text2); text-align: right; line-height: 1.6; }
 
-        /* Edit banner fields (hidden by default) */
-        .cal-edit-fields {
-            display: none;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--border);
-            gap: 10px;
-            display: none;
-            grid-template-columns: 1fr 1fr;
-        }
-        .cal-edit-fields.show { display: grid; }
+        /* Edit toggle button (top-right of nutrition screen) */
+        .edit-toggle-btn { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s; white-space: nowrap; }
+        .edit-toggle-btn.active { background: rgba(0,229,160,0.15); border-color: var(--accent); color: var(--accent); }
 
-        /* Edit mode toggle button */
-        .edit-toggle-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text2);
-            border-radius: 20px;
-            padding: 6px 14px;
-            font-size: 12px;
-            font-weight: 600;
-            font-family: 'DM Sans', sans-serif;
-            cursor: pointer;
-            display: flex; align-items: center; gap: 5px;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
+        /* ── MEAL BLOCKS ──
+           Each meal (Breakfast, Lunch, etc.) is a collapsible block.
+           Clicking the header toggles the .open class via JS */
+        .meal-block { background: var(--surface2); border-radius: 12px; margin-bottom: 8px; overflow: visible; }
 
-        .edit-toggle-btn.active {
-            background: rgba(0,229,160,0.15);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        /* Meal blocks */
-        .meal-block {
-            background: var(--surface2);
-            border-radius: 12px; margin-bottom: 8px; overflow: visible;
-        }
-        .meal-hdr {
-            padding: 14px 16px; display: flex; justify-content: space-between;
-            align-items: center; cursor: pointer; user-select: none;
-        }
+        /* Meal header — clickable row with name + caret arrow */
+        .meal-hdr { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
         .meal-hdr-left { display: flex; flex-direction: column; gap: 2px; flex: 1; }
         .meal-name { font-size: 14px; font-weight: 600; }
         .meal-time { font-size: 11px; color: var(--text2); }
+
+        /* Caret arrow that rotates 180° when meal is open */
         .meal-caret { color: var(--text2); transition: transform 0.2s; font-size: 18px; margin-left: 8px; }
         .meal-block.open .meal-caret { transform: rotate(180deg); }
+
+        /* Meal body — hidden by default, shown when .open is added */
         .meal-body { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border); }
         .meal-block.open .meal-body { display: block; }
 
-        /* Food categories and items */
-        .food-category {
-            font-size: 10px; font-weight: 700; letter-spacing: 1px;
-            text-transform: uppercase; color: var(--accent);
-            margin: 12px 0 6px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
+        /* Food category headers (e.g., "CHOOSE ONE CARB", "PROTEIN") */
+        .food-category { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin: 12px 0 6px; display: flex; align-items: center; justify-content: space-between; }
         .food-list { list-style: none; }
 
-        .food-item {
-            font-size: 13px; color: var(--text2);
-            padding: 5px 0;
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; gap: 8px;
-        }
+        /* Individual food items — each has a small green dot (::before) */
+        .food-item { font-size: 13px; color: var(--text2); padding: 5px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+        .food-item::before { content: ''; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
 
-        .food-item::before {
-            content: '';
-            width: 4px; height: 4px;
-            background: var(--accent); border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        /* In edit mode, food items become editable */
-        .edit-mode .food-item::before { display: none; }
-
+        /* ── EDIT MODE ──
+           When .edit-mode is added to a meal block, these rules kick in.
+           This is the CSS pattern: .parent-class .child { styles }
+           So .edit-mode .food-item-text means "food-item-text INSIDE an edit-mode element" */
+        .edit-mode .food-item::before { display: none; }     /* Hide green dots */
         .food-item-text { flex: 1; }
-
-        .food-item-input {
-            flex: 1;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 7px 10px;
-            font-size: 13px;
-            font-family: 'DM Sans', sans-serif;
-            color: var(--text);
-            display: none;
-        }
+        .food-item-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text); display: none; }
         .food-item-input:focus { outline: none; border-color: var(--accent); }
+        .edit-mode .food-item-text { display: none; }        /* Hide text spans */
+        .edit-mode .food-item-input { display: block; }      /* Show input fields */
 
-        /* Edit mode shows inputs, hides text */
-        .edit-mode .food-item-text { display: none; }
-        .edit-mode .food-item-input { display: block; }
-
-        /* Delete item btn */
-        .del-item-btn {
-            background: transparent; border: none;
-            color: var(--danger); cursor: pointer;
-            font-size: 16px; padding: 2px 4px;
-            display: none; line-height: 1;
-            border-radius: 4px;
-            flex-shrink: 0;
-        }
+        /* Delete button per food item — only visible in edit mode */
+        .del-item-btn { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 2px 4px; display: none; line-height: 1; border-radius: 4px; flex-shrink: 0; }
         .edit-mode .del-item-btn { display: flex; align-items: center; }
 
-        /* Add item row */
-        .add-item-row {
-            display: none;
-            align-items: center; gap: 8px;
-            padding: 8px 0 4px;
-        }
+        /* Add item row — input + green "+" button. Hidden until edit mode */
+        .add-item-row { display: none; align-items: center; gap: 8px; padding: 8px 0 4px; }
         .edit-mode .add-item-row { display: flex; }
-
-        .add-item-input {
-            flex: 1;
-            background: var(--surface);
-            border: 1px dashed rgba(0,229,160,0.3);
-            border-radius: 8px;
-            padding: 8px 10px;
-            font-size: 13px;
-            font-family: 'DM Sans', sans-serif;
-            color: var(--text);
-        }
+        .add-item-input { flex: 1; background: var(--surface); border: 1px dashed rgba(0,229,160,0.3); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text); }
         .add-item-input:focus { outline: none; border-color: var(--accent); }
         .add-item-input::placeholder { color: var(--text2); font-style: italic; }
+        .add-item-btn { background: var(--accent); border: none; color: #000; border-radius: 8px; width: 30px; height: 30px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; }
 
-        .add-item-btn {
-            background: var(--accent); border: none;
-            color: #000; border-radius: 8px;
-            width: 30px; height: 30px;
-            font-size: 18px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; font-weight: 700;
-        }
-
-        /* Meal note */
-        .meal-note {
-            background: rgba(255,193,7,0.1);
-            border-left: 3px solid #ffc107;
-            padding: 8px 10px; margin-top: 10px;
-            border-radius: 4px; font-size: 12px; color: #ffc107;
-        }
-        .meal-note-input {
-            width: 100%;
-            background: rgba(255,193,7,0.08);
-            border: 1px solid rgba(255,193,7,0.3);
-            border-radius: 8px; padding: 8px 10px;
-            font-size: 12px; color: #ffc107;
-            font-family: 'DM Sans', sans-serif;
-            margin-top: 10px; display: none;
-        }
+        /* Meal note — yellow left-border callout */
+        .meal-note { background: rgba(255,193,7,0.1); border-left: 3px solid #ffc107; padding: 8px 10px; margin-top: 10px; border-radius: 4px; font-size: 12px; color: #ffc107; }
+        .meal-note-input { width: 100%; background: rgba(255,193,7,0.08); border: 1px solid rgba(255,193,7,0.3); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #ffc107; font-family: 'DM Sans', sans-serif; margin-top: 10px; display: none; }
         .meal-note-input:focus { outline: none; }
-        .edit-mode .meal-note { display: none; }
-        .edit-mode .meal-note-input { display: block; }
+        .edit-mode .meal-note { display: none; }              /* Hide note text */
+        .edit-mode .meal-note-input { display: block; }       /* Show note input */
 
-        /* Meal name / time inline editing */
-        .meal-name-input, .meal-time-input {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-family: 'DM Sans', sans-serif;
-            color: var(--text);
-            display: none;
-        }
+        /* Inline editing for meal name and time */
+        .meal-name-input, .meal-time-input { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-family: 'DM Sans', sans-serif; color: var(--text); display: none; }
         .meal-name-input { font-size: 14px; font-weight: 600; width: 140px; }
         .meal-time-input { font-size: 11px; color: var(--text2); width: 120px; }
         .meal-name-input:focus, .meal-time-input:focus { outline: none; border-color: var(--accent); }
-
         .edit-mode .meal-name { display: none; }
         .edit-mode .meal-name-input { display: block; }
         .edit-mode .meal-time { display: none; }
         .edit-mode .meal-time-input { display: block; }
 
-        /* Delete meal */
-        .del-meal-btn {
-            background: rgba(255,77,106,0.1);
-            border: 1px solid rgba(255,77,106,0.2);
-            color: var(--danger); cursor: pointer;
-            border-radius: 8px; padding: 5px 10px;
-            font-size: 12px; font-weight: 600;
-            font-family: 'DM Sans', sans-serif;
-            display: none; margin-top: 12px;
-        }
+        /* Delete entire meal button — only in edit mode */
+        .del-meal-btn { background: rgba(255,77,106,0.1); border: 1px solid rgba(255,77,106,0.2); color: var(--danger); cursor: pointer; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; display: none; margin-top: 12px; }
         .edit-mode .del-meal-btn { display: block; }
 
-        /* Add category button */
-        .add-category-btn {
-            background: transparent;
-            border: 1px dashed rgba(0,149,255,0.3);
-            color: var(--accent2); cursor: pointer;
-            border-radius: 8px; padding: 6px 10px;
-            font-size: 12px; font-weight: 600;
-            font-family: 'DM Sans', sans-serif;
-            width: 100%; margin-top: 8px;
-            display: none;
-        }
+        /* Add category / add meal buttons — dashed border style */
+        .add-category-btn { background: transparent; border: 1px dashed rgba(0,149,255,0.3); color: var(--accent2); cursor: pointer; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; width: 100%; margin-top: 8px; display: none; }
         .edit-mode .add-category-btn { display: block; }
+        .add-meal-btn { width: 100%; background: var(--surface2); border: 1px dashed rgba(0,229,160,0.3); color: var(--accent); cursor: pointer; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; display: none; margin-bottom: 8px; }
 
-        /* Add meal */
-        .add-meal-btn {
-            width: 100%;
-            background: var(--surface2);
-            border: 1px dashed rgba(0,229,160,0.3);
-            color: var(--accent); cursor: pointer;
-            border-radius: 12px; padding: 14px;
-            font-size: 14px; font-weight: 600;
-            font-family: 'DM Sans', sans-serif;
-            display: none; margin-bottom: 8px;
-        }
-
-        /* Save banner */
-        .save-banner {
-            position: fixed;
-            bottom: 96px;
-            left: 50%; transform: translateX(-50%);
-            background: var(--surface);
-            border: 1px solid var(--accent);
-            border-radius: 30px;
-            padding: 10px 20px;
-            display: none;
-            align-items: center; gap: 12px;
-            z-index: 400;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-        }
+        /* "Unsaved changes" banner — fixed at bottom, pops up when edits are made */
+        .save-banner { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--accent); border-radius: 30px; padding: 10px 20px; display: none; align-items: center; gap: 12px; z-index: 400; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
         .save-banner.show { display: flex; }
         .save-banner-text { font-size: 13px; color: var(--text2); }
-        .save-now-btn {
-            background: var(--accent); border: none;
-            color: #000; border-radius: 20px;
-            padding: 7px 16px; font-size: 13px;
-            font-weight: 700; font-family: 'DM Sans', sans-serif;
-            cursor: pointer;
-        }
-        .discard-btn {
-            background: transparent; border: none;
-            color: var(--danger); font-size: 13px;
-            font-family: 'DM Sans', sans-serif;
-            cursor: pointer;
-        }
+        .save-now-btn { background: var(--accent); border: none; color: #000; border-radius: 20px; padding: 7px 16px; font-size: 13px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+        .discard-btn { background: transparent; border: none; color: var(--danger); font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
 
-        /* ── PHASES ── */
-        .phase-block {
-            background: var(--surface2); border-radius: 12px;
-            padding: 14px 16px; margin-bottom: 8px;
-            border-left: 3px solid var(--accent2);
-        }
+        /* ══════════════════════════════════════════════════════════
+           PHASES (CUT/BULK) SCREEN
+           ══════════════════════════════════════════════════════════ */
+        .phase-block { background: var(--surface2); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; border-left: 3px solid var(--accent2); }
         .phase-name-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
         .phase-name-txt { font-weight: 600; font-size: 15px; }
         .phase-date { font-size: 11px; color: var(--text2); }
         .phase-macros { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-        .macro-chip {
-            background: var(--surface); border-radius: 20px;
-            padding: 4px 10px; font-size: 11px;
-            color: var(--text2); font-family: 'DM Mono', monospace;
-        }
-        .add-phase-btn {
-            width: 100%;
-            background: var(--surface2);
-            color: var(--accent); border: 1px dashed rgba(0,229,160,0.3);
-            border-radius: 12px; padding: 13px; font-size: 14px;
-            font-weight: 600; font-family: 'DM Sans', sans-serif;
-            cursor: pointer; margin-bottom: 14px;
-        }
+
+        /* Macro chips — small rounded pills showing P/C/F values */
+        .macro-chip { background: var(--surface); border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+        .add-phase-btn { width: 100%; background: var(--surface2); color: var(--accent); border: 1px dashed rgba(0,229,160,0.3); border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-bottom: 14px; }
+
+        /* Phase form — hidden by default, shown when .open is toggled */
         .phase-form-wrap { display: none; margin-bottom: 14px; }
         .phase-form-wrap.open { display: block; }
 
-        /* ── FORM INPUTS ── */
+        /* ══════════════════════════════════════════════════════════
+           SETTINGS SCREEN
+           ══════════════════════════════════════════════════════════ */
+        .settings-section { margin-bottom: 20px; }
+        .settings-section-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); margin-bottom: 10px; padding-left: 2px; }
+
+        /* Theme picker — 3-column grid with clickable cards */
+        .theme-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .theme-option { border: 2px solid var(--border); border-radius: 14px; padding: 14px 10px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); }
+        .theme-option.active { border-color: var(--accent); }  /* Selected theme gets accent border */
+        .theme-preview { width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 8px; border: 1px solid rgba(128,128,128,0.2); }
+        .theme-option-label { font-size: 12px; font-weight: 600; color: var(--text); }
+
+        /* Setting rows — label on left, input on right */
+        .setting-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .setting-row-info { flex: 1; }
+        .setting-row-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .setting-row-desc { font-size: 12px; color: var(--text2); }
+        .setting-input { width: 90px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 15px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); text-align: center; }
+        .setting-input:focus { outline: none; border-color: var(--accent); }
+
+        /* Action buttons in settings (Export, Import, Clear) */
+        .btn-setting { width: 100%; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-bottom: 8px; }
+        .btn-export { background: var(--surface); color: var(--accent); border-color: rgba(0,229,160,0.25); }
+        .btn-import { background: var(--surface); color: var(--accent2); border-color: rgba(0,149,255,0.25); }
+        .btn-danger { background: rgba(255,77,106,0.08); color: var(--danger); border-color: rgba(255,77,106,0.2); }
+        .btn-danger:active { background: rgba(255,77,106,0.2); }
+        .settings-version { text-align: center; font-size: 11px; color: var(--text2); margin-top: 24px; padding: 12px; }
+
+        /* ══════════════════════════════════════════════════════════
+           SHARED FORM COMPONENTS
+           ══════════════════════════════════════════════════════════
+           Used in the Add Entry modal and Phase form */
         .form-group { margin-bottom: 16px; }
-        .form-label {
-            font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
-            color: var(--text2); margin-bottom: 8px; display: block;
-        }
-        .form-input {
-            width: 100%;
-            background: var(--surface2); border: 1px solid var(--border);
-            border-radius: 10px; padding: 13px 14px;
-            font-size: 16px; font-family: 'DM Sans', sans-serif;
-            color: var(--text); transition: border-color 0.2s;
-        }
+        .form-label { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 8px; display: block; }
+        .form-input { width: 100%; background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px; font-size: 16px; font-family: 'DM Sans', sans-serif; color: var(--text); transition: border-color 0.2s; }
         .form-input:focus { outline: none; border-color: var(--accent); }
         textarea.form-input { resize: none; }
 
-        .btn-primary {
-            width: 100%; background: var(--accent); color: #000;
-            border: none; border-radius: 12px; padding: 15px;
-            font-size: 15px; font-weight: 700; font-family: 'DM Sans', sans-serif;
-            cursor: pointer; margin-top: 6px;
-        }
-        .btn-cancel {
-            width: 100%; background: transparent; color: var(--text2);
-            border: 1px solid var(--border); border-radius: 12px; padding: 13px;
-            font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 8px;
-        }
+        /* Primary button (green) and Cancel button (outlined) */
+        .btn-primary { width: 100%; background: var(--accent); color: #000; border: none; border-radius: 12px; padding: 15px; font-size: 15px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 6px; }
+        .btn-cancel { width: 100%; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: 12px; padding: 13px; font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 8px; }
 
-        /* ── MODAL ── */
-        .modal-overlay {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.7); z-index: 500;
-            align-items: flex-end; backdrop-filter: blur(4px);
-        }
+        /* ══════════════════════════════════════════════════════════
+           BOTTOM SHEET MODAL
+           ══════════════════════════════════════════════════════════
+           Used for the "New Weigh-in" form.
+           - Overlay covers the whole screen (position: fixed + inset: 0)
+           - Sheet slides up from the bottom (align-items: flex-end)
+           - backdrop-filter: blur → blurs the content behind the overlay */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: var(--modal-bg); z-index: 500; align-items: flex-end; backdrop-filter: blur(4px); }
         .modal-overlay.open { display: flex; }
-        .modal-sheet {
-            width: 100%; max-width: 480px; margin: 0 auto;
-            background: var(--surface); border-radius: 24px 24px 0 0;
-            padding: 20px 20px 40px; border-top: 1px solid var(--border);
-            animation: slideUp 0.3s ease;
-        }
+
+        .modal-sheet { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px 20px 40px; border-top: 1px solid var(--border); animation: slideUp 0.3s ease; }
+
+        /* Slide-up animation using @keyframes */
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* Small drag handle at top of modal (visual indicator) */
         .modal-handle { width: 36px; height: 4px; background: var(--surface2); border-radius: 2px; margin: 0 auto 20px; }
         .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
 
-        /* ── FAB ── */
-        .fab {
-            position: fixed; bottom: 28px;
-            right: calc(50% - 240px + 20px);
-            width: var(--fab-size); height: var(--fab-size);
-            background: var(--accent); border: none; border-radius: 50%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 24px rgba(0,229,160,0.4);
-            z-index: 300; transition: transform 0.2s, box-shadow 0.2s;
-        }
+        /* ══════════════════════════════════════════════════════════
+           FLOATING ACTION BUTTON (FAB)
+           ══════════════════════════════════════════════════════════
+           The green "+" button in the bottom-right corner.
+           position: fixed → stays in place even when scrolling.
+           The right position is calculated to stay within the 480px app width */
+        .fab { position: fixed; bottom: 28px; right: calc(50% - 240px + 20px); width: 56px; height: 56px; background: var(--accent); border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(0,0,0,0.3); z-index: 300; transition: transform 0.2s, box-shadow 0.2s; }
+
+        /* On small screens (< 480px), just pin it 20px from the right edge */
         @media (max-width: 480px) { .fab { right: 20px; } }
-        .fab:active { transform: scale(0.92); box-shadow: 0 2px 12px rgba(0,229,160,0.3); }
+        .fab:active { transform: scale(0.92); }  /* Shrinks slightly on press */
         .fab svg { color: #000; }
 
-        /* ── EMPTY STATE ── */
+        /* ── EMPTY STATES ──
+           Shown when there's no data (no entries, no phases, etc.) */
         .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); }
         .empty-icon { font-size: 40px; margin-bottom: 12px; }
         .empty-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
         .empty-sub { font-size: 13px; }
 
-        /* small inline edit input for cal banner */
-        .inline-edit-input {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(0,229,160,0.4);
-            border-radius: 8px; padding: 4px 8px;
-            font-family: 'DM Mono', monospace;
-            color: var(--accent); font-size: 24px; font-weight: 700;
-            width: 100px; display: none;
-        }
+        /* ── INLINE EDIT INPUTS (Nutrition calorie banner) ── */
+        .inline-edit-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,229,160,0.4); border-radius: 8px; padding: 4px 8px; font-family: 'DM Mono', monospace; color: var(--accent); font-size: 24px; font-weight: 700; width: 100px; display: none; }
         .inline-edit-input:focus { outline: none; }
         .inline-edit-input.show { display: inline-block; }
         .inline-text.hide { display: none; }
-
-        .inline-sm-input {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border);
-            border-radius: 6px; padding: 3px 6px;
-            font-family: 'DM Sans', sans-serif;
-            color: var(--text2); font-size: 12px;
-            width: 100%; display: none;
-        }
+        .inline-sm-input { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px; font-family: 'DM Sans', sans-serif; color: var(--text2); font-size: 12px; width: 100%; display: none; }
         .inline-sm-input:focus { outline: none; border-color: rgba(0,229,160,0.4); }
         .inline-sm-input.show { display: inline-block; }
+
+        /* Hidden file input — triggered by the Import button via JS */
+        #import-file { display: none; }
+
+        /* ── TOAST NOTIFICATION ──
+           A small popup that appears briefly to confirm actions.
+           pointer-events: none → you can't accidentally click it */
+        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--accent); z-index: 600; opacity: 0; transition: opacity 0.3s, transform 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.3); pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
 
-<!-- TOP NAV -->
+<!-- ══════════════════════════════════════════════════════════
+     NAVIGATION BAR
+     ══════════════════════════════════════════════════════════
+     Each button has a data-screen attribute that matches a screen ID.
+     JS reads this to know which screen to show when clicked.
+     SVGs are inline icons (no external image files needed). -->
 <nav>
     <button class="nav-tab active" data-screen="stats">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Stats
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Stats
     </button>
     <button class="nav-tab" data-screen="history">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        History
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History
     </button>
     <button class="nav-tab" data-screen="nutrition">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-        Nutrition
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Nutrition
     </button>
     <button class="nav-tab" data-screen="phases">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        Phases
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Cut/Bulk
+    </button>
+    <button class="nav-tab" data-screen="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
     </button>
 </nav>
 
-<!-- ══ STATS ══ -->
+<!-- ══════════════════════════════════════════════════════════
+     STATS SCREEN
+     ══════════════════════════════════════════════════════════
+     Shows: current weight, body fat, total lost, lean mass,
+     a progress chart, and goal progress bar.
+     
+     The "active" class makes this screen visible on load. -->
 <div class="screen active" id="screen-stats">
-    <div id="stats-no-data" class="empty-state" style="display:none;">
-        <div class="empty-icon">📊</div>
-        <div class="empty-title">No data yet</div>
-        <div class="empty-sub">Tap the + button to add your first entry</div>
-    </div>
+    <!-- Empty state — shown when no entries exist -->
+    <div id="stats-no-data" class="empty-state" style="display:none;"><div class="empty-icon">📊</div><div class="empty-title">No data yet</div><div class="empty-sub">Tap the + button to add your first entry</div></div>
+    
+    <!-- Stats content — hidden when no data, shown otherwise -->
     <div id="stats-content">
+        <!-- Top row: Current Weight + Body Fat -->
         <div class="hero-row">
-            <div class="hero-card accent-card">
-                <div class="card-label">Current Weight</div>
-                <div class="hero-val"><span id="stat-weight">—</span> <span class="unit">kg</span></div>
-                <div class="hero-delta" id="stat-weight-delta">—</div>
-            </div>
-            <div class="hero-card">
-                <div class="card-label">Body Fat</div>
-                <div class="hero-val"><span id="stat-bf">—</span> <span class="unit">%</span></div>
-                <div class="hero-delta" id="stat-bf-delta">—</div>
-            </div>
+            <div class="hero-card accent-card"><div class="card-label">Current Weight</div><div class="hero-val"><span id="stat-weight">—</span> <span class="unit">kg</span></div><div class="hero-delta" id="stat-weight-delta">—</div></div>
+            <div class="hero-card"><div class="card-label">Body Fat</div><div class="hero-val"><span id="stat-bf">—</span> <span class="unit">%</span></div><div class="hero-delta" id="stat-bf-delta">—</div></div>
         </div>
+        <!-- Bottom row: Total Lost + Lean Mass -->
         <div class="hero-row">
-            <div class="hero-card">
-                <div class="card-label">Lost Total</div>
-                <div class="hero-val"><span id="stat-lost">—</span> <span class="unit">kg</span></div>
-                <div class="hero-delta delta-good" id="stat-weeks">—</div>
-            </div>
-            <div class="hero-card">
-                <div class="card-label">Lean Mass</div>
-                <div class="hero-val"><span id="stat-lean">—</span> <span class="unit">kg</span></div>
-                <div class="hero-delta" id="stat-lean-delta">—</div>
-            </div>
+            <div class="hero-card"><div class="card-label">Lost Total</div><div class="hero-val"><span id="stat-lost">—</span> <span class="unit">kg</span></div><div class="hero-delta delta-good" id="stat-weeks">—</div></div>
+            <div class="hero-card"><div class="card-label">Lean Mass</div><div class="hero-val"><span id="stat-lean">—</span> <span class="unit">kg</span></div><div class="hero-delta" id="stat-lean-delta">—</div></div>
         </div>
-        <div class="card">
-            <div class="card-label" style="margin-bottom:14px;">Weight Progress</div>
-            <div class="chart-wrap"><canvas id="weight-chart"></canvas></div>
-            <div class="chart-legend">
-                <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span>Weight</div>
-                <div class="legend-item"><span class="legend-dot" style="background:var(--accent2)"></span>Lean Mass</div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-label">Goal: 75 kg</div>
-            <div class="goal-row"><span class="goal-label">Start → Goal</span><span class="goal-val" id="goal-progress-label">—</span></div>
-            <div class="progress-bar"><div class="progress-fill" id="goal-progress-bar" style="width:0%"></div></div>
-            <div class="goal-row"><span class="goal-label">Remaining</span><span class="goal-val" id="goal-remaining">—</span></div>
-        </div>
+        <!-- Weight chart — drawn on <canvas> by JavaScript -->
+        <div class="card"><div class="card-label" style="margin-bottom:14px;">Weight Progress</div><div class="chart-wrap"><canvas id="weight-chart"></canvas></div><div class="chart-legend"><div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span>Weight</div><div class="legend-item"><span class="legend-dot" style="background:var(--accent2)"></span>Lean Mass</div></div></div>
+        <!-- Goal progress card -->
+        <div class="card"><div class="card-label" id="goal-title">Goal: 75 kg</div><div class="goal-row"><span class="goal-label">Start → Goal</span><span class="goal-val" id="goal-progress-label">—</span></div><div class="progress-bar"><div class="progress-fill" id="goal-progress-bar" style="width:0%"></div></div><div class="goal-row"><span class="goal-label">Remaining</span><span class="goal-val" id="goal-remaining">—</span></div></div>
     </div>
 </div>
 
-<!-- ══ HISTORY ══ -->
-<div class="screen" id="screen-history">
-    <div id="history-list">
-        <div class="empty-state">
-            <div class="empty-icon">🗂️</div>
-            <div class="empty-title">No entries yet</div>
-            <div class="empty-sub">Tap + to add your first weigh-in</div>
-        </div>
-    </div>
-</div>
+<!-- ══════════════════════════════════════════════════════════
+     HISTORY SCREEN
+     ══════════════════════════════════════════════════════════
+     Shows a reverse-chronological list of all weigh-in entries.
+     Rendered dynamically by renderHistory() in JS. -->
+<div class="screen" id="screen-history"><div id="history-list"><div class="empty-state"><div class="empty-icon">🗂️</div><div class="empty-title">No entries yet</div><div class="empty-sub">Tap + to add your first weigh-in</div></div></div></div>
 
-<!-- ══ NUTRITION ══ -->
+<!-- ══════════════════════════════════════════════════════════
+     NUTRITION SCREEN
+     ══════════════════════════════════════════════════════════
+     Shows daily calorie target and meal plan.
+     Has an "Edit" mode that reveals input fields for all items. -->
 <div class="screen" id="screen-nutrition">
-
-    <!-- Calorie Banner -->
-    <div class="cal-banner">
-        <div class="cal-banner-row">
-            <div class="cal-val-wrap">
-                <div>
-                    <span class="cal-val inline-text" id="cal-display">1639</span>
-                    <input type="number" class="inline-edit-input" id="cal-input" value="1639">
-                </div>
-                <div class="cal-label">kcal daily target</div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-                <div class="cal-info" id="cal-info-display">
-                    <span id="info-weight-display">81.5</span> kg · <span id="info-height-display">1.73</span> m
-                </div>
-                <div id="cal-info-edit" style="display:none;text-align:right;">
-                    <input type="number" step="0.1" class="inline-sm-input show" id="info-weight-input" value="81.5" placeholder="kg" style="width:60px;margin-bottom:4px;">
-                    <input type="number" step="0.01" class="inline-sm-input show" id="info-height-input" value="1.73" placeholder="m" style="width:60px;">
-                </div>
-                <button class="edit-toggle-btn" id="nutrition-edit-btn" onclick="toggleNutritionEdit()">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Edit
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Meal (edit mode only) -->
+    <!-- Calorie banner — shows kcal target + weight/height -->
+    <div class="cal-banner"><div class="cal-banner-row"><div class="cal-val-wrap"><div><span class="cal-val inline-text" id="cal-display">1639</span><input type="number" class="inline-edit-input" id="cal-input" value="1639"></div><div class="cal-label">kcal daily target</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><div class="cal-info" id="cal-info-display"><span id="info-weight-display">81.5</span> kg · <span id="info-height-display">1.73</span> m</div><div id="cal-info-edit" style="display:none;text-align:right;"><input type="number" step="0.1" class="inline-sm-input show" id="info-weight-input" value="81.5" placeholder="kg" style="width:60px;margin-bottom:4px;"><input type="number" step="0.01" class="inline-sm-input show" id="info-height-input" value="1.73" placeholder="m" style="width:60px;"></div><button class="edit-toggle-btn" id="nutrition-edit-btn" onclick="toggleNutritionEdit()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button></div></div></div>
+    <!-- "Add Meal" button — only visible in edit mode (CSS controls this) -->
     <button class="add-meal-btn" id="add-meal-btn" onclick="addNewMeal()">+ Add Meal</button>
-
-    <!-- Meals container -->
+    <!-- Meals get rendered here dynamically by renderMeals() -->
     <div id="meals-container"></div>
-
 </div>
 
-<!-- ══ PHASES ══ -->
+<!-- ══════════════════════════════════════════════════════════
+     PHASES (CUT/BULK) SCREEN
+     ══════════════════════════════════════════════════════════
+     Tracks diet phases with name, date, calories, and macro ratios. -->
 <div class="screen" id="screen-phases">
     <button class="add-phase-btn" onclick="togglePhaseForm()">+ Add New Phase</button>
-    <div class="phase-form-wrap" id="phase-form-wrap">
-        <div class="card">
-            <form id="phase-form">
-                <div class="form-group"><label class="form-label">Start Date</label><input type="date" id="phase-date" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">Phase Name</label><input type="text" id="phase-name" class="form-input" placeholder="e.g. Cut Phase 2" required></div>
-                <div class="form-group"><label class="form-label">Daily Calories</label><input type="number" id="phase-calories" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">Protein (g/kg)</label><input type="number" step="0.1" id="phase-protein" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">Carbs (g/kg)</label><input type="number" step="0.1" id="phase-carbs" class="form-input" required></div>
-                <div class="form-group"><label class="form-label">Fats (g/kg)</label><input type="number" step="0.1" id="phase-fats" class="form-input" required></div>
-                <button type="submit" class="btn-primary">Save Phase</button>
-            </form>
-        </div>
-    </div>
+    <!-- Phase form — toggles open/closed -->
+    <div class="phase-form-wrap" id="phase-form-wrap"><div class="card"><form id="phase-form"><div class="form-group"><label class="form-label">Start Date</label><input type="date" id="phase-date" class="form-input" required></div><div class="form-group"><label class="form-label">Phase Name</label><input type="text" id="phase-name" class="form-input" placeholder="e.g. Cut Phase 2" required></div><div class="form-group"><label class="form-label">Daily Calories</label><input type="number" id="phase-calories" class="form-input" required></div><div class="form-group"><label class="form-label">Protein (g/kg)</label><input type="number" step="0.1" id="phase-protein" class="form-input" required></div><div class="form-group"><label class="form-label">Carbs (g/kg)</label><input type="number" step="0.1" id="phase-carbs" class="form-input" required></div><div class="form-group"><label class="form-label">Fats (g/kg)</label><input type="number" step="0.1" id="phase-fats" class="form-input" required></div><button type="submit" class="btn-primary">Save Phase</button></form></div></div>
+    <!-- Phase list rendered dynamically -->
     <div id="phases-list"></div>
 </div>
 
-<!-- FAB -->
-<button class="fab" onclick="openModal()" aria-label="Add entry">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-</button>
+<!-- ══════════════════════════════════════════════════════════
+     SETTINGS SCREEN
+     ══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-settings">
+    <!-- THEME PICKER -->
+    <div class="settings-section">
+        <div class="settings-section-title">Theme</div>
+        <div class="theme-grid">
+            <!-- data-theme-pick is a custom data attribute used by JS to identify which theme was clicked -->
+            <div class="theme-option" data-theme-pick="dark" onclick="setTheme('dark')"><div class="theme-preview" style="background:#1a1e2a;"></div><div class="theme-option-label">Dark</div></div>
+            <div class="theme-option" data-theme-pick="light" onclick="setTheme('light')"><div class="theme-preview" style="background:#f5f6fa;"></div><div class="theme-option-label">Light</div></div>
+            <div class="theme-option" data-theme-pick="claude" onclick="setTheme('claude')"><div class="theme-preview" style="background:linear-gradient(135deg,#f0ede6,#e8e4db);"></div><div class="theme-option-label">Claude</div></div>
+        </div>
+    </div>
 
-<!-- Save Banner -->
-<div class="save-banner" id="save-banner">
-    <span class="save-banner-text">Unsaved changes</span>
-    <button class="discard-btn" onclick="discardNutrition()">Discard</button>
-    <button class="save-now-btn" onclick="saveNutritionNow()">Save</button>
+    <!-- GOALS & BASELINE -->
+    <div class="settings-section">
+        <div class="settings-section-title">Goals & Baseline</div>
+        <!-- onchange="saveSettings()" → auto-saves when you change the value -->
+        <div class="setting-row"><div class="setting-row-info"><div class="setting-row-title">Goal Weight</div><div class="setting-row-desc">Your target weight in kg</div></div><input type="number" step="0.1" class="setting-input" id="setting-goal" value="75" onchange="saveSettings()"></div>
+        <div class="setting-row"><div class="setting-row-info"><div class="setting-row-title">Starting Weight</div><div class="setting-row-desc">Override for progress calc</div></div><input type="number" step="0.1" class="setting-input" id="setting-start" placeholder="auto" onchange="saveSettings()"></div>
+    </div>
+
+    <!-- DATA MANAGEMENT -->
+    <div class="settings-section">
+        <div class="settings-section-title">Data Management</div>
+        <button class="btn-setting btn-export" onclick="exportData()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export All Data (JSON)</button>
+        <!-- Import button triggers hidden file input via JS -->
+        <button class="btn-setting btn-import" onclick="document.getElementById('import-file').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Import Data from JSON</button>
+        <!-- Hidden file input — accepts .json files only -->
+        <input type="file" id="import-file" accept=".json" onchange="importData(event)">
+    </div>
+
+    <!-- DANGER ZONE -->
+    <div class="settings-section">
+        <div class="settings-section-title" style="color:var(--danger);">Danger Zone</div>
+        <button class="btn-setting btn-danger" onclick="clearAllData()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Clear All Data & Reset App</button>
+    </div>
+    <div class="settings-version">Weight Tracker v2.0</div>
 </div>
 
-<!-- ADD ENTRY MODAL -->
+<!-- FAB (Floating Action Button) — the green "+" -->
+<button class="fab" id="main-fab" onclick="openModal()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+
+<!-- Save Banner — nutrition unsaved changes warning -->
+<div class="save-banner" id="save-banner"><span class="save-banner-text">Unsaved changes</span><button class="discard-btn" onclick="discardNutrition()">Discard</button><button class="save-now-btn" onclick="saveNutritionNow()">Save</button></div>
+
+<!-- Toast notification element (reused for all toast messages) -->
+<div class="toast" id="toast"></div>
+
+<!-- ADD ENTRY MODAL — bottom sheet that slides up -->
 <div class="modal-overlay" id="modal" onclick="closeModalOnBg(event)">
-    <div class="modal-sheet">
-        <div class="modal-handle"></div>
-        <div class="modal-title">New Weigh-in</div>
-        <form id="entry-form">
-            <div class="form-group"><label class="form-label">Date</label><input type="date" id="entry-date" class="form-input" required></div>
-            <div class="form-group"><label class="form-label">Weight (kg)</label><input type="number" step="0.1" id="entry-weight" class="form-input" placeholder="0.0" required></div>
-            <div class="form-group"><label class="form-label">Body Fat (%)</label><input type="number" step="0.1" id="entry-bodyfat" class="form-input" placeholder="0.0" required></div>
-            <div class="form-group"><label class="form-label">Notes</label><textarea id="entry-notes" class="form-input" rows="2" placeholder="Optional notes…"></textarea></div>
-            <button type="submit" class="btn-primary">Save Entry</button>
-            <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-        </form>
+    <div class="modal-sheet"><div class="modal-handle"></div><div class="modal-title">New Weigh-in</div>
+        <form id="entry-form"><div class="form-group"><label class="form-label">Date</label><input type="date" id="entry-date" class="form-input" required></div><div class="form-group"><label class="form-label">Weight (kg)</label><input type="number" step="0.1" id="entry-weight" class="form-input" placeholder="0.0" required></div><div class="form-group"><label class="form-label">Body Fat (%)</label><input type="number" step="0.1" id="entry-bodyfat" class="form-input" placeholder="0.0" required></div><div class="form-group"><label class="form-label">Notes</label><textarea id="entry-notes" class="form-input" rows="2" placeholder="Optional notes…"></textarea></div><button type="submit" class="btn-primary">Save Entry</button><button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button></form>
     </div>
 </div>
 
+
+<!-- ══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════
+     The app uses localStorage (browser storage) to persist data.
+     Data is stored as JSON strings under different keys:
+       'entries'   → array of weigh-in entries
+       'nutrition' → meal plan data
+       'phases'    → diet phases
+       'settings'  → theme, goal weight, etc.
+     
+     ARCHITECTURE:
+     - getData/saveData: generic localStorage read/write helpers
+     - render functions: read data → update the DOM (HTML)
+     - event handlers: respond to user actions → update data → re-render
+-->
 <script>
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
 //  DATA HELPERS
-// ─────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  getData(key)  → reads from localStorage, parses JSON, returns object or null
+//  saveData(key) → stringifies object to JSON, writes to localStorage
+//
+//  localStorage only stores strings, so we JSON.stringify on save
+//  and JSON.parse on read. The try/catch in getData prevents crashes
+//  if the stored data is corrupted or not valid JSON.
+// ─────────────────────────────────────────────────────────────
 function getData(k) { try { return JSON.parse(localStorage.getItem(k)) || null; } catch { return null; } }
 function saveData(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  SETTINGS
+// ─────────────────────────────────────────────────────────────
+//  DEFAULT_SETTINGS → used when no settings exist yet (first visit)
+//  getSettings()    → merges saved settings with defaults
+//                     The spread operator (...) copies all properties.
+//                     Saved settings override defaults.
+//  saveSettings()   → reads values from the Settings form inputs,
+//                     saves to localStorage, and refreshes the stats
+// ─────────────────────────────────────────────────────────────
+const DEFAULT_SETTINGS = { theme: 'dark', goalWeight: 75, startWeight: null };
+
+function getSettings() { return { ...DEFAULT_SETTINGS, ...(getData('settings') || {}) }; }
+
+function saveSettings() {
+    const s = getSettings();
+    // Read values from the form inputs
+    s.goalWeight = parseFloat(document.getElementById('setting-goal').value) || 75;
+    const sw = document.getElementById('setting-start').value;
+    s.startWeight = sw ? parseFloat(sw) : null;  // null = use first entry automatically
+    saveData('settings', s);
+    showToast('Settings saved');
+    renderStats();  // Refresh stats to reflect new goal/start weight
+}
+
+// Populates the Settings form with current saved values
+function loadSettingsUI() {
+    const s = getSettings();
+    document.getElementById('setting-goal').value = s.goalWeight;
+    document.getElementById('setting-start').value = s.startWeight || '';
+    setTheme(s.theme, true);  // true = skipSave (don't re-save what we just loaded)
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  THEME SWITCHING
+// ─────────────────────────────────────────────────────────────
+//  HOW IT WORKS:
+//  1. Sets data-theme attribute on <html> element
+//  2. CSS automatically picks up the matching variable set
+//  3. All var(--bg), var(--text), etc. update instantly
+//  4. Saves choice to localStorage so it persists
+//  5. Updates the "active" class on theme picker buttons
+// ─────────────────────────────────────────────────────────────
+function setTheme(name, skipSave) {
+    // This one line triggers the entire visual theme change!
+    document.documentElement.setAttribute('data-theme', name);
+
+    // Highlight the selected theme in the picker
+    document.querySelectorAll('.theme-option').forEach(el => {
+        el.classList.toggle('active', el.dataset.themePick === name);
+    });
+
+    // Save to localStorage (skip on initial load to avoid unnecessary write)
+    if (!skipSave) { const s = getSettings(); s.theme = name; saveData('settings', s); }
+
+    // Redraw chart if stats screen is visible (chart colors need updating)
+    if (document.getElementById('screen-stats').classList.contains('active')) renderStats();
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  TOAST NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────
+//  Shows a brief message at the bottom of the screen.
+//  Uses CSS transitions for fade-in/fade-out.
+//  setTimeout removes the toast after 2 seconds.
+// ─────────────────────────────────────────────────────────────
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  EXPORT / IMPORT / CLEAR DATA
+// ─────────────────────────────────────────────────────────────
+//  Export: collects ALL localStorage data into one JSON object,
+//          creates a Blob (file), and triggers a download.
+//  Import: reads a JSON file, confirms with user, then writes
+//          all data back to localStorage.
+//  Clear:  double-confirms then wipes localStorage entirely.
+// ─────────────────────────────────────────────────────────────
+function exportData() {
+    // Gather all app data into one object
+    const backup = {
+        _version: 2,
+        _exportDate: new Date().toISOString(),
+        entries: getData('entries') || [],
+        nutrition: getData('nutrition') || null,
+        phases: getData('phases') || [],
+        settings: getSettings()
+    };
+    // Create a downloadable file from the JSON
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);     // Creates a temporary URL for the blob
+    const a = document.createElement('a');      // Create a hidden <a> tag
+    a.href = url;
+    a.download = 'weight-tracker-backup-' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();                                  // Trigger the download
+    URL.revokeObjectURL(url);                   // Clean up the temporary URL
+    showToast('Data exported');
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();  // FileReader API reads files from the user's device
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);  // Parse the JSON content
+            if (!confirm('This will replace ALL current data. Continue?')) return;
+            // Write each section back to localStorage
+            if (data.entries) saveData('entries', data.entries);
+            if (data.nutrition) saveData('nutrition', data.nutrition);
+            if (data.phases) saveData('phases', data.phases);
+            if (data.settings) { saveData('settings', data.settings); loadSettingsUI(); }
+            showToast('Data imported successfully');
+            renderStats();
+        } catch { alert('Invalid JSON file.'); }
+    };
+    reader.readAsText(file);   // Start reading the file
+    event.target.value = '';   // Reset file input so same file can be re-imported
+}
+
+function clearAllData() {
+    // Double confirmation to prevent accidents
+    if (!confirm('⚠️ This will permanently delete ALL data.\n\nAre you sure?')) return;
+    if (!confirm('Last chance — cannot be undone. Proceed?')) return;
+    localStorage.clear();      // Wipes everything
+    showToast('All data cleared');
+    loadSettingsUI();
+    renderStats();
+}
+
+
+// ─────────────────────────────────────────────────────────────
 //  DEFAULT NUTRITION DATA
-// ─────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  This is the meal plan that loads on first use.
+//  Each meal has:
+//    id         → unique identifier
+//    name/time  → display info
+//    open       → whether the meal is expanded by default
+//    note       → optional yellow note text
+//    categories → array of { label, items[] } groups
+//
+//  getNutrition() returns saved data, or the defaults if nothing saved
+// ─────────────────────────────────────────────────────────────
 const DEFAULT_NUTRITION = {
     calories: 1639,
     weightKg: 81.5,
     heightM: 1.73,
     meals: [
-        {
-            id: 'breakfast',
-            name: 'Breakfast',
-            time: '08:00 – 09:00',
-            open: true,
-            note: 'Test no milk in coffee',
-            categories: [
-                { label: '', items: ['30g oats', '35g whey protein', '1 medium banana', '200ml skim milk'] }
-            ]
-        },
-        {
-            id: 'lunch',
-            name: 'Lunch',
-            time: '12:00',
-            open: true,
-            note: '',
-            categories: [
-                { label: 'Choose one carb', items: ['2 slices whole wheat bread', '150g cooked rice or pasta', '270g potato'] },
-                { label: 'Protein', items: ['150g chicken breast or lean beef'] },
-                { label: 'Dessert', items: ['1 medium banana'] }
-            ]
-        },
-        {
-            id: 'snack',
-            name: 'Afternoon Snack',
-            time: '15:00',
-            open: false,
-            note: '',
-            categories: [
-                { label: '', items: ['30g mixed nuts (almonds, walnuts, cashews)', '1 medium banana'] }
-            ]
-        },
-        {
-            id: 'dinner',
-            name: 'Dinner',
-            time: '18:00 – 19:00',
-            open: false,
-            note: '',
-            categories: [
-                { label: 'Choose one carb', items: ['150g cooked rice or pasta', '270g potato'] },
-                { label: 'Protein', items: ['100g chicken breast or lean beef'] },
-                { label: 'Fat — important', items: ['30g grated cheese or 10ml extra-virgin olive oil'] }
-            ]
-        }
+        { id: 'breakfast', name: 'Breakfast', time: '08:00 – 09:00', open: true, note: 'Test no milk in coffee',
+          categories: [{ label: '', items: ['30g oats', '35g whey protein', '1 medium banana', '200ml skim milk'] }] },
+        { id: 'lunch', name: 'Lunch', time: '12:00', open: true, note: '',
+          categories: [
+              { label: 'Choose one carb', items: ['2 slices whole wheat bread', '150g cooked rice or pasta', '270g potato'] },
+              { label: 'Protein', items: ['150g chicken breast or lean beef'] },
+              { label: 'Dessert', items: ['1 medium banana'] }
+          ] },
+        { id: 'snack', name: 'Afternoon Snack', time: '15:00', open: false, note: '',
+          categories: [{ label: '', items: ['30g mixed nuts (almonds, walnuts, cashews)', '1 medium banana'] }] },
+        { id: 'dinner', name: 'Dinner', time: '18:00 – 19:00', open: false, note: '',
+          categories: [
+              { label: 'Choose one carb', items: ['150g cooked rice or pasta', '270g potato'] },
+              { label: 'Protein', items: ['100g chicken breast or lean beef'] },
+              { label: 'Fat — important', items: ['30g grated cheese or 10ml extra-virgin olive oil'] }
+          ] }
     ]
 };
+function getNutrition() { return getData('nutrition') || JSON.parse(JSON.stringify(DEFAULT_NUTRITION)); }
 
-function getNutrition() {
-    return getData('nutrition') || JSON.parse(JSON.stringify(DEFAULT_NUTRITION));
-}
 
-// ─────────────────────────────────────────
-//  NAV
-// ─────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  NAVIGATION — TAB SWITCHING
+// ─────────────────────────────────────────────────────────────
+//  querySelectorAll gets ALL nav-tab buttons, then we add a
+//  click listener to each. When clicked:
+//  1. Remove 'active' from all tabs and screens
+//  2. Add 'active' to the clicked tab and matching screen
+//  3. Call the appropriate render function for that screen
+//  4. Hide the FAB on the settings screen
+// ─────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-tab').forEach(btn => {
     btn.addEventListener('click', () => {
+        // Deactivate all tabs and screens
         document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        // Activate clicked tab and its screen
         btn.classList.add('active');
         document.getElementById('screen-' + btn.dataset.screen).classList.add('active');
+        // Render the appropriate screen's content
         if (btn.dataset.screen === 'stats') renderStats();
         if (btn.dataset.screen === 'history') renderHistory();
         if (btn.dataset.screen === 'nutrition') renderNutrition();
         if (btn.dataset.screen === 'phases') renderPhases();
+        if (btn.dataset.screen === 'settings') loadSettingsUI();
+        // Hide the FAB (+) button on Settings (not needed there)
+        document.getElementById('main-fab').style.display = btn.dataset.screen === 'settings' ? 'none' : 'flex';
     });
 });
 
-// ─────────────────────────────────────────
-//  MODAL (entry)
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  MODAL — ADD ENTRY
+// ─────────────────────────────────────────────────────────────
+//  openModal()       → sets today's date and shows the modal
+//  closeModal()      → hides the modal
+//  closeModalOnBg()  → closes modal when clicking the dark overlay
+//                      (but NOT when clicking the form itself)
+//  form submit       → creates entry object, adds to array, sorts
+//                      by date, saves, and re-renders stats
+// ─────────────────────────────────────────────────────────────
 function openModal() {
-    document.getElementById('entry-date').valueAsDate = new Date();
+    document.getElementById('entry-date').valueAsDate = new Date();  // Default to today
     document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
-function closeModalOnBg(e) { if (e.target === document.getElementById('modal')) closeModal(); }
+function closeModalOnBg(e) {
+    // Only close if clicking the overlay itself, not the form inside it
+    if (e.target === document.getElementById('modal')) closeModal();
+}
 
 document.getElementById('entry-form').addEventListener('submit', function(e) {
-    e.preventDefault();
+    e.preventDefault();  // Prevent page reload (default form behavior)
     const weight = parseFloat(document.getElementById('entry-weight').value);
     const bf = parseFloat(document.getElementById('entry-bodyfat').value);
+    // Calculate lean mass: total weight × (1 - body fat percentage)
     const entry = {
         date: document.getElementById('entry-date').value,
-        weight, bodyFat: bf,
+        weight,
+        bodyFat: bf,
         leanMass: weight * (1 - bf / 100),
         notes: document.getElementById('entry-notes').value
     };
     const entries = getData('entries') || [];
     entries.push(entry);
+    // Sort chronologically so the chart and stats work correctly
     entries.sort((a, b) => new Date(a.date) - new Date(b.date));
     saveData('entries', entries);
-    this.reset();
+    this.reset();      // Clear the form fields
     closeModal();
-    renderStats();
+    renderStats();     // Refresh the stats display
 });
 
-// ─────────────────────────────────────────
-//  STATS
-// ─────────────────────────────────────────
-const GOAL = 75;
 
+// ─────────────────────────────────────────────────────────────
+//  STATS SCREEN — RENDERING
+// ─────────────────────────────────────────────────────────────
+//  renderStats() is called whenever we need to update the stats.
+//  It reads all entries + settings, calculates deltas, and
+//  updates every stat element in the DOM.
+// ─────────────────────────────────────────────────────────────
 function renderStats() {
     const entries = getData('entries') || [];
+    const settings = getSettings();
+    const GOAL = settings.goalWeight;  // Read from settings (not hardcoded!)
+
+    // Toggle between empty state and actual content
     const noData = document.getElementById('stats-no-data');
     const content = document.getElementById('stats-content');
-    if (entries.length === 0) { noData.style.display = 'block'; content.style.display = 'none'; return; }
+    if (!entries.length) { noData.style.display = 'block'; content.style.display = 'none'; return; }
     noData.style.display = 'none'; content.style.display = 'block';
 
-    const first = entries[0], latest = entries[entries.length - 1], prev = entries.length > 1 ? entries[entries.length - 2] : null;
-    document.getElementById('stat-weight').textContent = latest.weight.toFixed(1);
+    // Get key entries: first ever, latest, and previous
+    const first = entries[0];
+    const latest = entries[entries.length - 1];
+    const prev = entries.length > 1 ? entries[entries.length - 2] : null;
+
+    // Starting weight: use override from settings, or fallback to first entry
+    const startW = settings.startWeight || first.weight;
+
+    // Update the big number displays
+    document.getElementById('stat-weight').textContent = latest.weight.toFixed(1);  // .toFixed(1) = 1 decimal place
     document.getElementById('stat-bf').textContent = latest.bodyFat.toFixed(1);
     document.getElementById('stat-lean').textContent = latest.leanMass.toFixed(1);
 
+    // Calculate and display deltas (changes vs previous entry)
     if (prev) {
-        setDelta('stat-weight-delta', latest.weight - prev.weight, 'kg', true);
+        setDelta('stat-weight-delta', latest.weight - prev.weight, 'kg', true);   // true = lower is better
         setDelta('stat-bf-delta', latest.bodyFat - prev.bodyFat, '%', true);
-        setDelta('stat-lean-delta', latest.leanMass - prev.leanMass, 'kg', false);
+        setDelta('stat-lean-delta', latest.leanMass - prev.leanMass, 'kg', false); // false = higher is better
     } else {
-        ['stat-weight-delta','stat-bf-delta','stat-lean-delta'].forEach(id => { document.getElementById(id).textContent = 'First entry'; });
+        ['stat-weight-delta', 'stat-bf-delta', 'stat-lean-delta'].forEach(id => {
+            document.getElementById(id).textContent = 'First entry';
+        });
     }
 
-    document.getElementById('stat-lost').textContent = Math.abs(first.weight - latest.weight).toFixed(1);
-    const weeks = Math.round((new Date(latest.date) - new Date(first.date)) / (7 * 86400000));
+    // Total weight lost
+    document.getElementById('stat-lost').textContent = Math.abs(startW - latest.weight).toFixed(1);
+
+    // Calculate duration in weeks
+    const weeks = Math.round((new Date(latest.date) - new Date(first.date)) / (7 * 86400000));  // 86400000ms = 1 day
     document.getElementById('stat-weeks').textContent = weeks > 0 ? `over ${weeks} week${weeks > 1 ? 's' : ''}` : 'Starting point';
 
-    const pct = Math.min(100, Math.max(0, (first.weight - latest.weight) / (first.weight - GOAL) * 100));
+    // Goal progress (percentage of the way from start to goal)
+    document.getElementById('goal-title').textContent = `Goal: ${GOAL} kg`;
+    const pct = Math.min(100, Math.max(0, (startW - latest.weight) / (startW - GOAL) * 100));
     document.getElementById('goal-progress-bar').style.width = pct.toFixed(1) + '%';
     document.getElementById('goal-progress-label').textContent = pct.toFixed(1) + '%';
     const rem = latest.weight - GOAL;
     document.getElementById('goal-remaining').textContent = rem > 0 ? rem.toFixed(1) + ' kg to go' : '🎉 Goal reached!';
 
-    drawChart(entries);
+    drawChart(entries);  // Draw/redraw the weight chart
 }
 
+// Helper: formats a delta value and applies green/red color
+// lowerIsBetter: if true, negative values are green (good for weight/BF)
+//                if false, positive values are green (good for lean mass)
 function setDelta(id, val, unit, lowerIsBetter) {
     const el = document.getElementById(id);
     const good = lowerIsBetter ? val < 0 : val > 0;
@@ -857,105 +968,159 @@ function setDelta(id, val, unit, lowerIsBetter) {
     el.className = 'hero-delta ' + (val === 0 ? '' : good ? 'delta-good' : 'delta-bad');
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  CHART — CANVAS DRAWING
+// ─────────────────────────────────────────────────────────────
+//  Uses the HTML5 Canvas API to draw weight + lean mass lines.
+//  No external charting library needed!
+//
+//  KEY CONCEPTS:
+//  - Canvas has a coordinate system: (0,0) is top-left
+//  - DPR (device pixel ratio) handles Retina/high-DPI screens
+//  - We scale data points to fit within the chart area (padding)
+//  - xS(i) and yS(v) are scale functions: data → pixel position
+//  - getComputedStyle reads the current CSS variables (for theming)
+// ─────────────────────────────────────────────────────────────
 function drawChart(entries) {
     const canvas = document.getElementById('weight-chart');
     const wrap = canvas.parentElement;
+
+    // Handle high-DPI screens (Retina). Without this, canvas looks blurry.
     const dpr = window.devicePixelRatio || 1;
     const W = wrap.clientWidth, H = 160;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    canvas.width = W * dpr; canvas.height = H * dpr;        // Set actual pixel dimensions
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';  // Set CSS display size
     const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
+    ctx.scale(dpr, dpr);  // Scale all drawing operations for DPR
     if (!entries.length) return;
 
+    // Read current theme colors from CSS variables
+    const style = getComputedStyle(document.documentElement);
+    const accentColor = style.getPropertyValue('--accent').trim();
+    const accent2Color = style.getPropertyValue('--accent2').trim();
+    const labelColor = style.getPropertyValue('--text2').trim();
+    const borderColor = style.getPropertyValue('--border').trim();
+
+    // Extract data arrays
     const weights = entries.map(e => e.weight);
     const leans = entries.map(e => e.leanMass);
     const allVals = [...weights, ...leans];
-    const minV = Math.min(...allVals) - 1, maxV = Math.max(...allVals) + 1;
-    const pad = { t: 10, r: 10, b: 24, l: 34 };
-    const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
-    const xS = i => pad.l + (entries.length < 2 ? cW / 2 : i / (entries.length - 1) * cW);
-    const yS = v => pad.t + cH - (v - minV) / (maxV - minV) * cH;
+    const minV = Math.min(...allVals) - 1;  // Add 1kg padding below
+    const maxV = Math.max(...allVals) + 1;  // Add 1kg padding above
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+    // Chart padding (space for labels and axes)
+    const pad = { t: 10, r: 10, b: 24, l: 34 };
+    const cW = W - pad.l - pad.r;   // Chart drawing width
+    const cH = H - pad.t - pad.b;   // Chart drawing height
+
+    // Scale functions: convert data index/value to pixel coordinates
+    const xS = i => pad.l + (entries.length < 2 ? cW / 2 : i / (entries.length - 1) * cW);
+    const yS = v => pad.t + cH - (v - minV) / (maxV - minV) * cH;  // Note: Y is inverted (0 = top)
+
+    // Draw horizontal grid lines (5 lines including top and bottom)
+    ctx.strokeStyle = borderColor; ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
         const y = pad.t + (i / 4) * cH;
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
-        ctx.fillStyle = 'rgba(139,144,167,0.7)'; ctx.font = '9px DM Mono, monospace'; ctx.textAlign = 'right';
+        // Y-axis labels
+        ctx.fillStyle = labelColor; ctx.font = '9px DM Mono,monospace'; ctx.textAlign = 'right';
         ctx.fillText((maxV - (i / 4) * (maxV - minV)).toFixed(0), pad.l - 4, y + 3);
     }
 
+    // drawLine: draws a filled area + line + data points for one dataset
     function drawLine(data, color) {
-        if (data.length < 2) { ctx.beginPath(); ctx.arc(xS(0), yS(data[0]), 4, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); return; }
+        // Single data point: just draw a dot
+        if (data.length < 2) { ctx.beginPath(); ctx.arc(xS(0), yS(data[0]), 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); return; }
+
+        // Gradient fill under the line (fades to transparent at bottom)
         const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + cH);
-        grad.addColorStop(0, color + '33'); grad.addColorStop(1, color + '00');
+        grad.addColorStop(0, color + '33');  // 33 = ~20% opacity in hex
+        grad.addColorStop(1, color + '00');  // 00 = fully transparent
         ctx.beginPath(); ctx.moveTo(xS(0), yS(data[0]));
         for (let i = 1; i < data.length; i++) ctx.lineTo(xS(i), yS(data[i]));
-        ctx.lineTo(xS(data.length-1), pad.t+cH); ctx.lineTo(xS(0), pad.t+cH); ctx.closePath();
+        ctx.lineTo(xS(data.length - 1), pad.t + cH); ctx.lineTo(xS(0), pad.t + cH); ctx.closePath();
         ctx.fillStyle = grad; ctx.fill();
+
+        // The actual line on top
         ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
         ctx.moveTo(xS(0), yS(data[0]));
         for (let i = 1; i < data.length; i++) ctx.lineTo(xS(i), yS(data[i]));
         ctx.stroke();
-        data.forEach((v,i) => { ctx.beginPath(); ctx.arc(xS(i), yS(v), 3, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); });
-    }
-    drawLine(leans, '#0095ff');
-    drawLine(weights, '#00e5a0');
 
-    ctx.fillStyle = 'rgba(139,144,167,0.8)'; ctx.font = '9px DM Sans, sans-serif'; ctx.textAlign = 'center';
+        // Data point dots
+        data.forEach((v, i) => { ctx.beginPath(); ctx.arc(xS(i), yS(v), 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); });
+    }
+
+    // Draw lean mass first (so weight line draws on top)
+    drawLine(leans, accent2Color);
+    drawLine(weights, accentColor);
+
+    // X-axis date labels (show every Nth label to avoid crowding)
+    ctx.fillStyle = labelColor; ctx.font = '9px DM Sans,sans-serif'; ctx.textAlign = 'center';
     const step = Math.max(1, Math.floor(entries.length / 5));
     entries.forEach((e, i) => {
         if (i % step === 0 || i === entries.length - 1) {
             const d = new Date(e.date + 'T00:00:00');
-            ctx.fillText((d.getMonth()+1) + '/' + d.getDate(), xS(i), H - 4);
+            ctx.fillText((d.getMonth() + 1) + '/' + d.getDate(), xS(i), H - 4);
         }
     });
 }
 
-// ─────────────────────────────────────────
-//  HISTORY
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  HISTORY SCREEN — RENDERING
+// ─────────────────────────────────────────────────────────────
+//  Renders entries in reverse chronological order (newest first).
+//  Each entry shows: date block, weight, BF%, lean mass, notes,
+//  and a colored badge showing change from previous entry.
+// ─────────────────────────────────────────────────────────────
 function renderHistory() {
     const allEntries = getData('entries') || [];
-    const entries = allEntries.slice().reverse();
+    const entries = allEntries.slice().reverse();  // .slice() creates a copy before reversing
     const container = document.getElementById('history-list');
     if (!entries.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">🗂️</div><div class="empty-title">No entries yet</div><div class="empty-sub">Tap + to add your first weigh-in</div></div>`;
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">🗂️</div><div class="empty-title">No entries yet</div><div class="empty-sub">Tap + to add your first weigh-in</div></div>';
         return;
     }
     let html = '';
     entries.forEach(e => {
-        const d = new Date(e.date + 'T00:00:00');
-        const day = String(d.getDate()).padStart(2,'0');
-        const mon = d.toLocaleString('default',{month:'short'}).toUpperCase();
+        const d = new Date(e.date + 'T00:00:00');  // T00:00:00 prevents timezone offset issues
+        const day = String(d.getDate()).padStart(2, '0');  // "5" → "05"
+        const mon = d.toLocaleString('default', { month: 'short' }).toUpperCase();
+
+        // Find the previous entry to calculate delta
         const origIdx = allEntries.findIndex(x => x.date === e.date);
-        const prev = origIdx > 0 ? allEntries[origIdx-1] : null;
+        const prev = origIdx > 0 ? allEntries[origIdx - 1] : null;
         let badge = '';
         if (prev) {
             const delta = e.weight - prev.weight;
             const cls = delta < 0 ? 'badge-good' : delta > 0 ? 'badge-bad' : 'badge-neu';
             badge = `<div class="entry-delta-badge ${cls}">${delta >= 0 ? '+' : ''}${delta.toFixed(1)}kg</div>`;
         }
-        html += `<div class="entry-item">
-            <div class="entry-date-block"><div class="day">${day}</div><div class="mon">${mon}</div></div>
-            <div class="entry-data">
-                <div class="entry-weight">${e.weight.toFixed(1)} <span style="font-size:13px;color:var(--text2);font-weight:400;">kg</span></div>
-                <div class="entry-sub">${e.bodyFat.toFixed(1)}% BF · ${e.leanMass.toFixed(1)} kg lean${e.notes ? ' · ' + e.notes : ''}</div>
-            </div>${badge}
-        </div>`;
+
+        // Template literal (backticks) allows multi-line HTML with ${variables}
+        html += `<div class="entry-item"><div class="entry-date-block"><div class="day">${day}</div><div class="mon">${mon}</div></div><div class="entry-data"><div class="entry-weight">${e.weight.toFixed(1)} <span style="font-size:13px;color:var(--text2);font-weight:400;">kg</span></div><div class="entry-sub">${e.bodyFat.toFixed(1)}% BF · ${e.leanMass.toFixed(1)} kg lean${e.notes ? ' · ' + e.notes : ''}</div></div>${badge}</div>`;
     });
-    container.innerHTML = html;
+    container.innerHTML = html;  // Replace container content with generated HTML
 }
 
-// ─────────────────────────────────────────
-//  NUTRITION — render
-// ─────────────────────────────────────────
-let nutritionEditMode = false;
-let pendingNutrition = null;   // working copy while editing
+
+// ─────────────────────────────────────────────────────────────
+//  NUTRITION SCREEN — RENDERING
+// ─────────────────────────────────────────────────────────────
+//  renderNutrition() → updates the calorie banner values
+//  renderMeals()     → rebuilds ALL meal blocks from data
+//
+//  The pattern is: read data → generate HTML string → set innerHTML
+//  This is simpler than creating elements individually with createElement
+// ─────────────────────────────────────────────────────────────
+let nutritionEditMode = false;   // Tracks if we're in edit mode
+let pendingNutrition = null;     // Snapshot of data when entering edit mode
 
 function renderNutrition() {
     const data = getNutrition();
-    // Update banner
+    // Update banner displays
     document.getElementById('cal-display').textContent = data.calories;
     document.getElementById('cal-input').value = data.calories;
     document.getElementById('info-weight-display').textContent = data.weightKg;
@@ -965,239 +1130,194 @@ function renderNutrition() {
     renderMeals(data);
 }
 
+// Renders all meal blocks as HTML
+// mi = meal index, ci = category index, ii = item index
+// These indices are passed to onclick handlers so JS knows which item to modify
 function renderMeals(data) {
     const container = document.getElementById('meals-container');
     let html = '';
     data.meals.forEach((meal, mi) => {
-        const openClass = meal.open ? 'open' : '';
-        html += `<div class="meal-block ${openClass}" id="meal-${mi}">
-            <div class="meal-hdr" onclick="toggleMealBlock(${mi})">
-                <div class="meal-hdr-left">
-                    <span class="meal-name">${escHtml(meal.name)}</span>
-                    <input type="text" class="meal-name-input" value="${escHtml(meal.name)}" onchange="markDirty()" onclick="event.stopPropagation()">
-                    <span class="meal-time">${escHtml(meal.time)}</span>
-                    <input type="text" class="meal-time-input" value="${escHtml(meal.time)}" onchange="markDirty()" onclick="event.stopPropagation()" placeholder="e.g. 12:00">
-                </div>
-                <span class="meal-caret">›</span>
-            </div>
-            <div class="meal-body">`;
-
+        html += `<div class="meal-block ${meal.open ? 'open' : ''}" id="meal-${mi}"><div class="meal-hdr" onclick="toggleMealBlock(${mi})"><div class="meal-hdr-left"><span class="meal-name">${escHtml(meal.name)}</span><input type="text" class="meal-name-input" value="${escHtml(meal.name)}" onchange="markDirty()" onclick="event.stopPropagation()"><span class="meal-time">${escHtml(meal.time)}</span><input type="text" class="meal-time-input" value="${escHtml(meal.time)}" onchange="markDirty()" onclick="event.stopPropagation()" placeholder="e.g. 12:00"></div><span class="meal-caret">›</span></div><div class="meal-body">`;
         meal.categories.forEach((cat, ci) => {
-            html += `<div class="food-category">
-                ${cat.label ? `<span>${escHtml(cat.label)}</span>` : '<span></span>'}
-            </div>
-            <ul class="food-list" id="catlist-${mi}-${ci}">`;
-
+            html += `<div class="food-category">${cat.label ? `<span>${escHtml(cat.label)}</span>` : '<span></span>'}</div><ul class="food-list" id="catlist-${mi}-${ci}">`;
             cat.items.forEach((item, ii) => {
-                html += `<li class="food-item">
-                    <span class="food-item-text">${escHtml(item)}</span>
-                    <input type="text" class="food-item-input" value="${escHtml(item)}" onchange="markDirty()">
-                    <button class="del-item-btn" onclick="deleteItem(${mi},${ci},${ii})" title="Remove">✕</button>
-                </li>`;
+                html += `<li class="food-item"><span class="food-item-text">${escHtml(item)}</span><input type="text" class="food-item-input" value="${escHtml(item)}" onchange="markDirty()"><button class="del-item-btn" onclick="deleteItem(${mi},${ci},${ii})">✕</button></li>`;
             });
-
-            html += `</ul>
-            <div class="add-item-row">
-                <input type="text" class="add-item-input" id="new-item-${mi}-${ci}" placeholder="Add item…">
-                <button class="add-item-btn" onclick="addItem(${mi},${ci})">+</button>
-            </div>`;
+            html += `</ul><div class="add-item-row"><input type="text" class="add-item-input" id="new-item-${mi}-${ci}" placeholder="Add item…"><button class="add-item-btn" onclick="addItem(${mi},${ci})">+</button></div>`;
         });
-
-        // Note
-        if (meal.note) {
-            html += `<div class="meal-note">${escHtml(meal.note)}</div>`;
-        } else {
-            html += `<div class="meal-note" style="display:none;"></div>`;
-        }
-        html += `<input type="text" class="meal-note-input" value="${escHtml(meal.note)}" placeholder="Add a note…" onchange="markDirty()">`;
-
-        html += `<button class="add-category-btn" onclick="addCategory(${mi})">+ Add Category</button>`;
-        html += `<button class="del-meal-btn" onclick="deleteMeal(${mi})">🗑 Remove this meal</button>`;
-        html += `</div></div>`;
+        if (meal.note) html += `<div class="meal-note">${escHtml(meal.note)}</div>`;
+        else html += `<div class="meal-note" style="display:none;"></div>`;
+        html += `<input type="text" class="meal-note-input" value="${escHtml(meal.note)}" placeholder="Add a note…" onchange="markDirty()"><button class="add-category-btn" onclick="addCategory(${mi})">+ Add Category</button><button class="del-meal-btn" onclick="deleteMeal(${mi})">🗑 Remove this meal</button></div></div>`;
     });
     container.innerHTML = html;
-
-    // Re-apply edit mode classes
+    // If we're in edit mode, re-apply the edit-mode CSS classes to new elements
     if (nutritionEditMode) applyEditMode(true);
 }
 
-function toggleMealBlock(mi) {
-    const block = document.getElementById('meal-' + mi);
-    block.classList.toggle('open');
-}
+// Toggle a meal open/closed (accordion behavior)
+function toggleMealBlock(mi) { document.getElementById('meal-' + mi).classList.toggle('open'); }
 
-function escHtml(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// Escape HTML to prevent XSS (cross-site scripting) attacks
+// Converts < > & " to safe HTML entities so user input can't break the page
+function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-// ─────────────────────────────────────────
-//  NUTRITION — edit mode
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  NUTRITION — EDIT MODE
+// ─────────────────────────────────────────────────────────────
+//  toggleNutritionEdit() → enters/exits edit mode
+//  applyEditMode()       → adds/removes .edit-mode class on meal blocks
+//                          (CSS handles showing/hiding inputs vs text)
+//  markDirty()           → shows the "Unsaved changes" save banner
+//  collectNutritionFromDOM() → reads ALL current values from the form
+//                              inputs and builds a data object
+//  saveNutritionNow()    → saves the collected data to localStorage
+//  discardNutrition()    → reloads from localStorage, discarding edits
+// ─────────────────────────────────────────────────────────────
 function toggleNutritionEdit() {
     nutritionEditMode = !nutritionEditMode;
     applyEditMode(nutritionEditMode);
-
     const btn = document.getElementById('nutrition-edit-btn');
     if (nutritionEditMode) {
         btn.classList.add('active');
-        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Editing`;
-        pendingNutrition = JSON.parse(JSON.stringify(getNutrition()));
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Editing';
+        pendingNutrition = JSON.parse(JSON.stringify(getNutrition()));  // Deep copy for potential discard
     } else {
         btn.classList.remove('active');
-        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit`;
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit';
         document.getElementById('save-banner').classList.remove('show');
     }
 }
 
+// Applies or removes edit-mode styling
 function applyEditMode(on) {
-    const container = document.getElementById('screen-nutrition');
-    const mealBlocks = container.querySelectorAll('.meal-block');
-    mealBlocks.forEach(b => {
-        if (on) b.classList.add('edit-mode');
-        else b.classList.remove('edit-mode');
+    // Add/remove .edit-mode class from all meal blocks
+    // CSS rules like .edit-mode .food-item-input { display: block } do the rest
+    document.querySelectorAll('#screen-nutrition .meal-block').forEach(b => {
+        if (on) b.classList.add('edit-mode'); else b.classList.remove('edit-mode');
     });
-
-    // Banner cal input
+    // Toggle calorie input visibility
     document.getElementById('cal-display').classList.toggle('hide', on);
     document.getElementById('cal-input').classList.toggle('show', on);
     document.getElementById('cal-info-display').style.display = on ? 'none' : '';
     document.getElementById('cal-info-edit').style.display = on ? 'block' : 'none';
-
-    // Add meal button
     document.getElementById('add-meal-btn').style.display = on ? 'block' : 'none';
 }
 
-function markDirty() {
-    document.getElementById('save-banner').classList.add('show');
-}
+// Shows the save banner when any edit is made
+function markDirty() { document.getElementById('save-banner').classList.add('show'); }
 
+// Reads ALL current form values from the DOM and builds a nutrition data object
+// This is needed because users may have typed new values into inputs
 function collectNutritionFromDOM() {
     const data = getNutrition();
-    // Banner
     data.calories = parseInt(document.getElementById('cal-input').value) || data.calories;
     data.weightKg = parseFloat(document.getElementById('info-weight-input').value) || data.weightKg;
     data.heightM = parseFloat(document.getElementById('info-height-input').value) || data.heightM;
-
-    // Meals
-    const container = document.getElementById('meals-container');
-    const mealBlocks = container.querySelectorAll('.meal-block');
-
     data.meals = data.meals.map((meal, mi) => {
         const block = document.getElementById('meal-' + mi);
         if (!block) return meal;
-
-        // Name & time
-        meal.name = block.querySelector('.meal-name-input').value;
+        meal.name = block.querySelector('.meal-name-input').value;       // querySelector finds first match
         meal.time = block.querySelector('.meal-time-input').value;
         meal.open = block.classList.contains('open');
         meal.note = block.querySelector('.meal-note-input').value;
-
-        // Items per category
         meal.categories = meal.categories.map((cat, ci) => {
             const ul = block.querySelector(`#catlist-${mi}-${ci}`);
             if (!ul) return cat;
-            const inputs = ul.querySelectorAll('.food-item-input');
-            cat.items = Array.from(inputs).map(inp => inp.value).filter(v => v.trim());
+            // querySelectorAll gets ALL matching elements, Array.from makes it iterable
+            cat.items = Array.from(ul.querySelectorAll('.food-item-input')).map(inp => inp.value).filter(v => v.trim());
             return cat;
-        }).filter(c => c.items.length > 0 || c.label);
-
+        }).filter(c => c.items.length > 0 || c.label);  // Remove empty categories
         return meal;
     });
-
     return data;
 }
 
-function saveNutritionNow() {
-    const data = collectNutritionFromDOM();
-    saveData('nutrition', data);
-    document.getElementById('save-banner').classList.remove('show');
-    renderNutrition();
-    // Stay in edit mode
-}
+function saveNutritionNow() { saveData('nutrition', collectNutritionFromDOM()); document.getElementById('save-banner').classList.remove('show'); renderNutrition(); }
+function discardNutrition() { document.getElementById('save-banner').classList.remove('show'); renderNutrition(); if (nutritionEditMode) applyEditMode(true); }
 
-function discardNutrition() {
-    document.getElementById('save-banner').classList.remove('show');
-    renderNutrition();
-    if (nutritionEditMode) applyEditMode(true);
-}
 
-// ─────────────────────────────────────────
-//  NUTRITION — mutations
-// ─────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  NUTRITION — MUTATION FUNCTIONS
+// ─────────────────────────────────────────────────────────────
+//  These functions modify the meal data when in edit mode.
+//  Pattern: collect current DOM state → mutate → save → re-render
+//
+//  splice(index, 1) → removes 1 item at the given index
+//  push(item)       → adds item to end of array
+// ─────────────────────────────────────────────────────────────
+
+// Delete a food item from a specific category
 function deleteItem(mi, ci, ii) {
     const data = collectNutritionFromDOM();
-    data.meals[mi].categories[ci].items.splice(ii, 1);
-    saveData('nutrition', data);
-    renderMeals(data);
-    if (nutritionEditMode) applyEditMode(true);
-    markDirty();
+    data.meals[mi].categories[ci].items.splice(ii, 1);  // Remove 1 item at index ii
+    saveData('nutrition', data); renderMeals(data);
+    if (nutritionEditMode) applyEditMode(true); markDirty();
 }
 
+// Add a new food item to a category
 function addItem(mi, ci) {
     const input = document.getElementById(`new-item-${mi}-${ci}`);
     const val = input.value.trim();
-    if (!val) return;
+    if (!val) return;  // Don't add empty items
     const data = collectNutritionFromDOM();
-    data.meals[mi].categories[ci].items.push(val);
-    saveData('nutrition', data);
-    renderMeals(data);
-    if (nutritionEditMode) applyEditMode(true);
-    markDirty();
-    // re-focus after render
-    const newInput = document.getElementById(`new-item-${mi}-${ci}`);
-    if (newInput) newInput.focus();
+    data.meals[mi].categories[ci].items.push(val);  // Add to end of items array
+    saveData('nutrition', data); renderMeals(data);
+    if (nutritionEditMode) applyEditMode(true); markDirty();
+    // Re-focus the input after re-render (for fast sequential adds)
+    const ni = document.getElementById(`new-item-${mi}-${ci}`);
+    if (ni) ni.focus();
 }
 
-// Allow Enter key to add item
+// Let Enter key trigger "add item" (instead of requiring click on + button)
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && e.target.classList.contains('add-item-input')) {
-        const id = e.target.id; // new-item-MI-CI
-        const parts = id.split('-');
+        // Parse the input ID (format: "new-item-MI-CI") to get meal/category indices
+        const parts = e.target.id.split('-');
         addItem(parseInt(parts[2]), parseInt(parts[3]));
     }
 });
 
+// Add a new category to a meal
 function addCategory(mi) {
     const data = collectNutritionFromDOM();
     data.meals[mi].categories.push({ label: 'New Category', items: ['New item'] });
-    saveData('nutrition', data);
-    renderMeals(data);
-    if (nutritionEditMode) applyEditMode(true);
-    markDirty();
-    // Ensure meal is open
+    saveData('nutrition', data); renderMeals(data);
+    if (nutritionEditMode) applyEditMode(true); markDirty();
     const block = document.getElementById('meal-' + mi);
-    if (block) block.classList.add('open');
+    if (block) block.classList.add('open');  // Open the meal to show the new category
 }
 
+// Delete an entire meal (with confirmation)
 function deleteMeal(mi) {
     if (!confirm('Remove this meal?')) return;
     const data = collectNutritionFromDOM();
-    data.meals.splice(mi, 1);
-    saveData('nutrition', data);
-    renderMeals(data);
-    if (nutritionEditMode) applyEditMode(true);
-    markDirty();
+    data.meals.splice(mi, 1);  // Remove the entire meal
+    saveData('nutrition', data); renderMeals(data);
+    if (nutritionEditMode) applyEditMode(true); markDirty();
 }
 
+// Add a brand new meal block
 function addNewMeal() {
     const data = collectNutritionFromDOM();
     data.meals.push({
-        id: 'meal_' + Date.now(),
-        name: 'New Meal',
-        time: '00:00',
-        open: true,
-        note: '',
+        id: 'meal_' + Date.now(),  // Unique ID using current timestamp
+        name: 'New Meal', time: '00:00', open: true, note: '',
         categories: [{ label: '', items: ['New item'] }]
     });
-    saveData('nutrition', data);
-    renderMeals(data);
-    if (nutritionEditMode) applyEditMode(true);
-    markDirty();
+    saveData('nutrition', data); renderMeals(data);
+    if (nutritionEditMode) applyEditMode(true); markDirty();
 }
 
-// ─────────────────────────────────────────
-//  PHASES
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  PHASES (CUT/BULK) SCREEN
+// ─────────────────────────────────────────────────────────────
+//  togglePhaseForm() → shows/hides the "Add Phase" form
+//  form submit       → creates phase object, adds to array,
+//                      sorts by date (newest first), saves
+//  renderPhases()    → rebuilds the phase list HTML
+// ─────────────────────────────────────────────────────────────
 function togglePhaseForm() { document.getElementById('phase-form-wrap').classList.toggle('open'); }
 
 document.getElementById('phase-form').addEventListener('submit', function(e) {
@@ -1212,7 +1332,7 @@ document.getElementById('phase-form').addEventListener('submit', function(e) {
     };
     const phases = getData('phases') || [];
     phases.push(phase);
-    phases.sort((a, b) => new Date(b.date) - new Date(a.date));
+    phases.sort((a, b) => new Date(b.date) - new Date(a.date));  // Sort newest first
     saveData('phases', phases);
     this.reset();
     document.getElementById('phase-form-wrap').classList.remove('open');
@@ -1223,27 +1343,28 @@ function renderPhases() {
     const phases = getData('phases') || [];
     const container = document.getElementById('phases-list');
     if (!phases.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No phases yet</div><div class="empty-sub">Add your first diet phase above</div></div>`;
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No phases yet</div><div class="empty-sub">Add your first diet phase above</div></div>';
         return;
     }
+    // .map() transforms each phase into an HTML string, .join('') combines them
     container.innerHTML = phases.map(p => {
         const d = new Date(p.date + 'T00:00:00').toLocaleDateString();
-        return `<div class="phase-block">
-            <div class="phase-name-row"><span class="phase-name-txt">${escHtml(p.name)}</span><span class="phase-date">${d}</span></div>
-            <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);margin:4px 0;">${p.calories} <span style="font-size:12px;font-weight:400;color:var(--text2);">kcal/day</span></div>
-            <div class="phase-macros">
-                <span class="macro-chip">P: ${p.protein}g/kg</span>
-                <span class="macro-chip">C: ${p.carbs}g/kg</span>
-                <span class="macro-chip">F: ${p.fats}g/kg</span>
-            </div>
-        </div>`;
+        return `<div class="phase-block"><div class="phase-name-row"><span class="phase-name-txt">${escHtml(p.name)}</span><span class="phase-date">${d}</span></div><div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);margin:4px 0;">${p.calories} <span style="font-size:12px;font-weight:400;color:var(--text2);">kcal/day</span></div><div class="phase-macros"><span class="macro-chip">P: ${p.protein}g/kg</span><span class="macro-chip">C: ${p.carbs}g/kg</span><span class="macro-chip">F: ${p.fats}g/kg</span></div></div>`;
     }).join('');
 }
 
-// ─────────────────────────────────────────
-//  INIT
-// ─────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  APP INITIALIZATION (runs once on page load)
+// ─────────────────────────────────────────────────────────────
+//  IIFE = Immediately Invoked Function Expression: (function(){ ... })();
+//  This runs as soon as the browser parses it.
+//
+//  On first visit: seeds default data (phase + nutrition plan)
+//  On every visit: loads settings (theme) and renders the stats screen
+// ─────────────────────────────────────────────────────────────
 (function() {
+    // First-run check: if 'firstRun' key doesn't exist, seed default data
     if (!localStorage.getItem('firstRun')) {
         localStorage.setItem('firstRun', 'done');
         saveData('phases', [{
@@ -1252,7 +1373,8 @@ function renderPhases() {
         }]);
         saveData('nutrition', JSON.parse(JSON.stringify(DEFAULT_NUTRITION)));
     }
-    renderStats();
+    loadSettingsUI();  // Apply saved theme + populate settings inputs
+    renderStats();     // Show the stats screen (default screen on load)
 })();
 </script>
 </body>
