@@ -69,28 +69,29 @@
             --warn-rgb: 229, 168, 0;
         }
 
-        [data-theme="claude"] {
-            /* Lighter, higher-contrast Claude theme */
-            --bg: #f0ede6;        /* warm cream */
-            --surface: #faf9f5;   /* cards */
-            --surface2: #e8e4db;  /* inputs / list items */
-            --input-bg: #e8e4db;
+            :root, [data-theme="dark"] {
+            /* Brighter, higher-contrast dark theme (less “dim screen” feel) */
+            --bg: #23293a;             /* was #1a1e2a */
+            --surface: #2b3247;        /* cards */
+            --surface2: #343c55;       /* inputs / list items */
+            --input-bg: #343c55;
           
-            --accent: #8a3f27;    /* keep your terracotta */
-            --accent2: #52402f;
+            --accent: #00e5a0;
+            --accent2: #0095ff;
           
-            --danger: #7a2219;
-            --warn: #826010;
+            --danger: #ff4d6a;
+            --warn: #ffc107;
           
-            --text: #2d2a26;      /* readable dark text */
-            --text2: #7a756c;     /* softer secondary text */
-            --border: rgba(0,0,0,0.08);
-            --modal-bg: rgba(0,0,0,0.35);
+            --text: #f6f7ff;           /* brighter main text */
+            --text2: #c1c6dd;          /* brighter secondary text */
+            --border: rgba(255,255,255,0.14); /* stronger borders for separation */
+            --modal-bg: rgba(0,0,0,0.55);     /* slightly less heavy overlay */
           
-            --accent-rgb: 138, 63, 39;
-            --accent2-rgb: 82, 64, 47;
-            --danger-rgb: 122, 34, 25;
-            --warn-rgb: 130, 96, 16;
+            /* RGB helpers */
+            --accent-rgb: 0, 229, 160;
+            --accent2-rgb: 0, 149, 255;
+            --danger-rgb: 255, 77, 106;
+            --warn-rgb: 255, 193, 7;
           }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
