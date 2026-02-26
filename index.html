@@ -70,24 +70,28 @@
         }
 
         [data-theme="claude"] {
-            --bg: #918e89;
-            --surface: #9e9b94;
-            --surface2: #857f76;
-            --accent: #8a3f27;
+            /* Lighter, higher-contrast Claude theme */
+            --bg: #f0ede6;        /* warm cream */
+            --surface: #faf9f5;   /* cards */
+            --surface2: #e8e4db;  /* inputs / list items */
+            --input-bg: #e8e4db;
+          
+            --accent: #8a3f27;    /* keep your terracotta */
             --accent2: #52402f;
+          
             --danger: #7a2219;
             --warn: #826010;
-            --text: #0d0c0a;
-            --text2: #3d3a35;
-            --border: rgba(0,0,0,0.20);
-            --modal-bg: rgba(0,0,0,0.60);
-            --input-bg: #857f76;
-
+          
+            --text: #2d2a26;      /* readable dark text */
+            --text2: #7a756c;     /* softer secondary text */
+            --border: rgba(0,0,0,0.08);
+            --modal-bg: rgba(0,0,0,0.35);
+          
             --accent-rgb: 138, 63, 39;
             --accent2-rgb: 82, 64, 47;
             --danger-rgb: 122, 34, 25;
             --warn-rgb: 130, 96, 16;
-        }
+          }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
