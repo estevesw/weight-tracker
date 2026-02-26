@@ -92,6 +92,36 @@
             --danger-rgb: 255, 91, 119;
             --warn-rgb: 255, 210, 74;
           }
+          
+                      /* ─────────────────────────────────────────────────────────────
+             DARK THEME OVERRIDE (brighter, less “dim screen” feel)
+             Paste this near the END of your <style> so it overrides earlier values.
+             ───────────────────────────────────────────────────────────── */
+          [data-theme="dark"] {
+            --bg: #344061;              /* brighter base background */
+            --surface: #3f4c73;         /* cards */
+            --surface2: #4a5884;        /* inputs / list items */
+            --input-bg: #4a5884;
+          
+            --accent: #00e5a0;
+            --accent2: #47b3ff;         /* brighter blue */
+          
+            --danger: #ff5b77;
+            --warn: #ffd35c;
+          
+            --text: #ffffff;            /* make text truly bright */
+            --text2: #e3e8ff;           /* brighter secondary text */
+          
+            --border: rgba(255,255,255,0.22); /* stronger separation */
+            --modal-bg: rgba(0,0,0,0.40);     /* less heavy overlay */
+          
+            --accent-rgb: 0, 229, 160;
+            --accent2-rgb: 71, 179, 255;
+            --danger-rgb: 255, 91, 119;
+            --warn-rgb: 255, 211, 92;
+          }
+
+      
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
