@@ -74,14 +74,17 @@
         --warn-rgb: 229, 168, 0;
       }
       
-      [data-theme="claude"] {
+      /* CLAUDE TERRACOTTA — Claude base + terracotta accent like your image */
+      [data-theme="claude-terracotta"] {
         --bg: #f0ede6;
         --surface: #faf9f5;
         --surface2: #e8e4db;
         --input-bg: #e8e4db;
       
-        --accent: #8a3f27;
-        --accent2: #52402f;
+        /* Accent tuned to your image */
+        --accent: #D87657;          /* terracotta/salmon */
+        --accent2: #8B5A44;         /* warm brown companion */
+      
         --danger: #7a2219;
         --warn: #826010;
       
@@ -90,11 +93,15 @@
         --border: rgba(0,0,0,0.08);
         --modal-bg: rgba(0,0,0,0.35);
       
-        --accent-rgb: 138, 63, 39;
-        --accent2-rgb: 82, 64, 47;
+        /* RGB helpers (must match the hex colors above) */
+        --accent-rgb: 216, 118, 87;
+        --accent2-rgb: 139, 90, 68;
         --danger-rgb: 122, 34, 25;
         --warn-rgb: 130, 96, 16;
       }
+
+
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     /* ── ACCESSIBILITY: keyboard focus visibility ── */
