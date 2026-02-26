@@ -33,72 +33,68 @@
 
     /* DEFAULT / DARK THEME (UNCHANGED palette)
        NOTE: leaving the dark theme aside as requested */
-    :root, [data-theme="dark"] {
-      --bg: #1a1e2a;
-      --surface: #1a1d27;
-      --surface2: #232635;
-      --accent: #00e5a0;
-      --accent2: #0095ff;
-      --danger: #ff4d6a;
-      --warn: #ffc107;
-      --text: #f0f2ff;
-      --text2: #8b90a7;
-      --border: rgba(255,255,255,0.07);
-      --modal-bg: rgba(0,0,0,0.7);
-      --input-bg: #232635;
-
-      /* RGB helpers */
-      --accent-rgb: 0, 229, 160;
-      --accent2-rgb: 0, 149, 255;
-      --danger-rgb: 255, 77, 106;
-      --warn-rgb: 255, 193, 7;
-    }
-
-    /* LIGHT THEME */
-    [data-theme="light"] {
-      --bg: #f5f6fa;
-      --surface: #ffffff;
-      --surface2: #eceef5;
-      --accent: #00b87a;
-      --accent2: #0077dd;
-      --danger: #e0334e;
-      --warn: #e5a800;
-      --text: #1a1d27;
-      --text2: #6b7084;
-      --border: rgba(0,0,0,0.08);
-      --modal-bg: rgba(0,0,0,0.4);
-      --input-bg: #eceef5;
-
-      --accent-rgb: 0, 184, 122;
-      --accent2-rgb: 0, 119, 221;
-      --danger-rgb: 224, 51, 78;
-      --warn-rgb: 229, 168, 0;
-    }
-
-    /* CLAUDE THEME — lighter + higher contrast
-       UPDATE NOTE: fixes visibility issues while keeping Claude vibe */
-    [data-theme="claude"] {
-      --bg: #f0ede6;
-      --surface: #faf9f5;
-      --surface2: #e8e4db;
-      --input-bg: #e8e4db;
-
-      --accent: #8a3f27;
-      --accent2: #52402f;
-      --danger: #7a2219;
-      --warn: #826010;
-
-      --text: #2d2a26;
-      --text2: #7a756c;
-      --border: rgba(0,0,0,0.08);
-      --modal-bg: rgba(0,0,0,0.35);
-
-      --accent-rgb: 138, 63, 39;
-      --accent2-rgb: 82, 64, 47;
-      --danger-rgb: 122, 34, 25;
-      --warn-rgb: 130, 96, 16;
-    }
-
+    
+       :root, [data-theme="dark"] {
+        --bg: #1a1e2a;
+        --surface: #1a1d27;
+        --surface2: #232635;
+        --accent: #00e5a0;
+        --accent2: #0095ff;
+        --danger: #ff4d6a;
+        --warn: #ffc107;
+        --text: #f0f2ff;
+        --text2: #8b90a7;
+        --border: rgba(255,255,255,0.07);
+        --modal-bg: rgba(0,0,0,0.7);
+        --input-bg: #232635;
+      
+        --accent-rgb: 0, 229, 160;
+        --accent2-rgb: 0, 149, 255;
+        --danger-rgb: 255, 77, 106;
+        --warn-rgb: 255, 193, 7;
+      }
+      
+      [data-theme="light"] {
+        --bg: #f5f6fa;
+        --surface: #ffffff;
+        --surface2: #eceef5;
+        --accent: #00b87a;
+        --accent2: #0077dd;
+        --danger: #e0334e;
+        --warn: #e5a800;
+        --text: #1a1d27;
+        --text2: #6b7084;
+        --border: rgba(0,0,0,0.08);
+        --modal-bg: rgba(0,0,0,0.4);
+        --input-bg: #eceef5;
+      
+        --accent-rgb: 0, 184, 122;
+        --accent2-rgb: 0, 119, 221;
+        --danger-rgb: 224, 51, 78;
+        --warn-rgb: 229, 168, 0;
+      }
+      
+      [data-theme="claude"] {
+        --bg: #f0ede6;
+        --surface: #faf9f5;
+        --surface2: #e8e4db;
+        --input-bg: #e8e4db;
+      
+        --accent: #8a3f27;
+        --accent2: #52402f;
+        --danger: #7a2219;
+        --warn: #826010;
+      
+        --text: #2d2a26;
+        --text2: #7a756c;
+        --border: rgba(0,0,0,0.08);
+        --modal-bg: rgba(0,0,0,0.35);
+      
+        --accent-rgb: 138, 63, 39;
+        --accent2-rgb: 82, 64, 47;
+        --danger-rgb: 122, 34, 25;
+        --warn-rgb: 130, 96, 16;
+      }
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     /* ── ACCESSIBILITY: keyboard focus visibility ── */
